@@ -44,7 +44,7 @@ public class ProductController {
     // ======================
     // CREATE PRODUCT
     // ======================
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ProductResponseDto> createProduct(
             @RequestBody ProductRequest request) {
@@ -69,7 +69,7 @@ public class ProductController {
     // ======================
     // UPDATE PRODUCT
     // ======================
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDto> updateProduct(
             @PathVariable Long id,

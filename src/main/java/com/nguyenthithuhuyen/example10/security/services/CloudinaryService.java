@@ -34,7 +34,6 @@ public class CloudinaryService {
 
             return secureUrl.toString();
         } catch (Exception e) {
-            // in ra log chi tiết để debug
             e.printStackTrace();
             throw new RuntimeException("Upload image failed: " + e.getMessage());
         }
