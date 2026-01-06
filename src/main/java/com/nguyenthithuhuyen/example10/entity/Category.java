@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -30,7 +31,14 @@ public class Category {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+ @ManyToOne
+    @JoinColumn(name = "parent_id")
+    private Category parent;
 
+    // ===== CATEGORY CON =====
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private List<Category> children = new ArrayList<>();
+    
 @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 @JsonIgnore // <-- Đảm bảo cái này đã được thêm
 private List<Product> products;
