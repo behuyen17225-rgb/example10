@@ -68,23 +68,4 @@ public class BillController {
     }
 
     // ✅ Xuất hóa đơn ra PDF: Cho phép Staff/Admin
-    @GetMapping("/{id}/export")
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')") // BỔ SUNG QUYỀN TRUY CẬP
-    public ResponseEntity<?> exportBillToPdf(@PathVariable Long id) {
-        try {
-            // Tối ưu: Chỉ truyền ID, để Service tìm và tạo PDF
-            byte[] pdfBytes = billService.exportToPdfBytes(id); 
-            
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=hoadon_" + id + ".pdf")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(pdfBytes);
-        } catch (RuntimeException e) {
-            // Lỗi khi không tìm thấy hóa đơn
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("❌ Không tìm thấy hóa đơn ID " + id + ".");
-        } catch (Exception e) {
-            // Lỗi kỹ thuật khi tạo PDF
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("❌ Lỗi khi xuất PDF: " + e.getMessage());
-        }
-    }
 }
