@@ -1,5 +1,6 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
+import com.nguyenthithuhuyen.example10.dto.CategoryDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductResponseDto;
 import com.nguyenthithuhuyen.example10.dto.ProductWithPromotionsDTO;
 import com.nguyenthithuhuyen.example10.entity.Category;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,30 +27,27 @@ public class ProductController {
     private final CategoryRepository categoryRepository;
     private final ProductServiceImpl productWithPromotionService;
 
-    // ======================
-    // GET ALL PRODUCTS
-    // ======================
+    // ================= GET ALL PRODUCTS =================
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<List<ProductResponseDto>> getAllProducts() {
+        List<ProductResponseDto> list = productService.getAllProducts()
+                .stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
     }
 
-    // ======================
-    // GET PRODUCT BY ID
-    // ======================
+    // ================= GET PRODUCT BY ID =================
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
+    public ResponseEntity<ProductResponseDto> getProductById(@PathVariable Long id) {
+        Product product = productService.getProductById(id);
+        return ResponseEntity.ok(mapToDto(product));
     }
 
-    // ======================
-    // CREATE PRODUCT
-    // ======================
+    // ================= CREATE PRODUCT =================
     // @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<ProductResponseDto> createProduct(
-            @RequestBody ProductRequest request) {
-
+    public ResponseEntity<ProductResponseDto> createProduct(@RequestBody ProductRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
@@ -66,9 +65,7 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToDto(saved));
     }
 
-    // ======================
-    // UPDATE PRODUCT
-    // ======================
+    // ================= UPDATE PRODUCT =================
     // @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDto> updateProduct(
@@ -92,9 +89,7 @@ public class ProductController {
         return ResponseEntity.ok(mapToDto(updated));
     }
 
-    // ======================
-    // DELETE PRODUCT
-    // ======================
+    // ================= DELETE PRODUCT =================
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable Long id) {
@@ -102,9 +97,7 @@ public class ProductController {
         return ResponseEntity.ok("Product deleted");
     }
 
-    // ======================
-    // PRODUCTS WITH ACTIVE PROMOTIONS
-    // ======================
+    // ================= PRODUCTS WITH ACTIVE PROMOTIONS =================
     @GetMapping("/with-active-promotions")
     public ResponseEntity<List<ProductWithPromotionsDTO>> getProductsWithPromotions() {
         return ResponseEntity.ok(
@@ -112,25 +105,32 @@ public class ProductController {
         );
     }
 
-    // ======================
-    // DTO MAPPER
-    // ======================
+    // ================= DTO MAPPER =================
     private ProductResponseDto mapToDto(Product p) {
         ProductResponseDto dto = new ProductResponseDto();
-        dto.id = p.getId();
-        dto.name = p.getName();
-        dto.description = p.getDescription();
-        dto.price = p.getPrice();
-        dto.imageUrl = p.getImageUrl();
-        dto.stockQuantity = p.getStockQuantity();
-        dto.isActive = p.getIsActive();
-        dto.category = p.getCategory();
+        dto.setId(p.getId());
+        dto.setName(p.getName());
+        dto.setDescription(p.getDescription());
+        dto.setPrice(p.getPrice());
+        dto.setImageUrl(p.getImageUrl());
+        dto.setStockQuantity(p.getStockQuantity());
+        dto.setIsActive(p.getIsActive());
+
+        if (p.getCategory() != null) {
+            Category c = p.getCategory();
+            dto.setCategory(new CategoryDTO(
+                    c.getId(),
+                    c.getName(),
+                    c.getDescription(),
+                    c.getParent() != null ? c.getParent().getId() : null,
+                    c.getParent() != null ? c.getParent().getName() : null
+            ));
+        }
+
         return dto;
     }
 
-    // ======================
-    // REQUEST DTO
-    // ======================
+    // ================= REQUEST DTO =================
     public static class ProductRequest {
         private String name;
         private String description;

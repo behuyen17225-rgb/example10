@@ -1,8 +1,11 @@
 package com.nguyenthithuhuyen.example10.dto;
 
-import com.nguyenthithuhuyen.example10.entity.Category;
+import lombok.Data;
+
+
 import java.math.BigDecimal;
 
+@Data
 public class ProductResponseDto {
     public Long id;
     public String name;
@@ -11,5 +14,5 @@ public class ProductResponseDto {
     public String imageUrl;
     public Integer stockQuantity;
     public Boolean isActive;
-    public Category category; // trả nguyên Category đã load
+    public CategoryDTO category; // <-- chỉ chứa thông tin cơ bản, tránh lặp
 }
