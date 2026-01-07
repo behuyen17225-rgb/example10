@@ -14,5 +14,4 @@ public class ProductResponseDto {
     public String imageUrl;
     public Integer stockQuantity;
     public Boolean isActive;
-    public CategoryDTO category; // <-- chỉ chứa thông tin cơ bản, tránh lặp
-}
+    public CategoryDTO category; }
