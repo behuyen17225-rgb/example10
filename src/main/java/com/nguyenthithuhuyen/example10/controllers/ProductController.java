@@ -121,6 +121,7 @@ public class ProductController {
             dto.setCategory(new CategoryDTO(
                     c.getId(),
                     c.getName(),
+                    c.getSlug(),
                     c.getDescription(),
                     c.getParent() != null ? c.getParent().getId() : null,
                     c.getParent() != null ? c.getParent().getName() : null

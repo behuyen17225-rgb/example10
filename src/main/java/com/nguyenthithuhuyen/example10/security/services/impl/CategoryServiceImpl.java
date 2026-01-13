@@ -16,7 +16,6 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    // ================= CREATE =================
     @Override
     public Category createCategory(Category category, Long parentId) {
         if (parentId != null) {
@@ -27,13 +26,13 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryRepository.save(category);
     }
 
-    // ================= UPDATE =================
     @Override
     public Category updateCategory(Category category, Long parentId) {
         Category existing = categoryRepository.findById(category.getId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         existing.setName(category.getName());
+        existing.setSlug(null); // 👈 QUAN TRỌNG
         existing.setDescription(category.getDescription());
         existing.setImageUrl(category.getImageUrl());
 
@@ -42,21 +41,19 @@ public class CategoryServiceImpl implements CategoryService {
                     .orElseThrow(() -> new RuntimeException("Parent category not found"));
             existing.setParent(parent);
         } else {
-            existing.setParent(null); // nếu parentId null hoặc trùng chính nó
+            existing.setParent(null);
         }
 
         return categoryRepository.save(existing);
     }
 
-    // ================= GET BY ID =================
     @Override
     public CategoryDTO getCategoryById(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Category not found"));
         return toDTO(category);
     }
 
-    // ================= GET ALL =================
     @Override
     public List<CategoryDTO> getAllCategories() {
         return categoryRepository.findAll()
@@ -65,21 +62,32 @@ public class CategoryServiceImpl implements CategoryService {
                 .collect(Collectors.toList());
     }
 
-    // ================= DELETE =================
     @Override
     public void deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Category not found"));
         if (!category.getChildren().isEmpty()) {
-            throw new RuntimeException("Cannot delete category because it has child categories");
+            throw new RuntimeException("Cannot delete category with children");
         }
         categoryRepository.delete(category);
     }
 
-    // ================= HELPER =================
     private CategoryDTO toDTO(Category category) {
-        Long parentId = category.getParent() != null ? category.getParent().getId() : null;
-        String parentName = category.getParent() != null ? category.getParent().getName() : null;
-        return new CategoryDTO(category.getId(), category.getName(), category.getDescription(), parentId, parentName);
+        Long parentId = category.getParent() != null
+                ? category.getParent().getId()
+                : null;
+
+        String parentName = category.getParent() != null
+                ? category.getParent().getName()
+                : null;
+
+        return new CategoryDTO(
+                category.getId(),
+                category.getName(),
+                category.getSlug(),   // 👈 THÊM
+                category.getDescription(),
+                parentId,
+                parentName
+        );
     }
 }

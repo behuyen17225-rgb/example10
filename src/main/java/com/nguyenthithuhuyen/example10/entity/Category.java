@@ -4,19 +4,19 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import com.nguyenthithuhuyen.example10.utils.SlugUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "categories")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "categories")
-// ✅ Tránh lỗi serialization khi sử dụng proxy cho lazy loading
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Category {
 
     @Id
@@ -26,30 +26,42 @@ public class Category {
     @Column(nullable = false, length = 50)
     private String name;
 
+    @Column(nullable = false, unique = true, length = 100)
+    private String slug;
+
     private String description;
     private String imageUrl;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
- @ManyToOne
+
+    @ManyToOne
     @JoinColumn(name = "parent_id")
     private Category parent;
 
-    // ===== CATEGORY CON =====
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<Category> children = new ArrayList<>();
-    
-@OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-@JsonIgnore // <-- Đảm bảo cái này đã được thêm
-private List<Product> products;
+
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Product> products;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+
+        if (slug == null || slug.isEmpty()) {
+            slug = SlugUtil.slugify(name);
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+
+        if (slug == null || slug.isEmpty()) {
+            slug = SlugUtil.slugify(name);
+        }
     }
 }
