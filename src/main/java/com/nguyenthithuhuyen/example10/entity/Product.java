@@ -19,6 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Product {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -28,20 +29,35 @@ public class Product {
 
     private String description;
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
+    // ❌ BỎ price
+    // private BigDecimal price;
 
-    // ✅ Đảm bảo khi trả về Product, nó bao gồm Category
-    @ManyToOne(fetch = FetchType.EAGER) 
+    /* ================= CATEGORY ================= */
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id", nullable = false)
-    // ✅ NGẮT VÒNG LẶP: Không serialize trường "products" bên trong Category
-    @JsonIgnoreProperties({ "products" }) 
+    @JsonIgnoreProperties({ "products" })
     private Category category;
 
+    /* ================= IMAGE / STOCK ================= */
     private String imageUrl;
     private Integer stockQuantity;
     private Boolean isActive = true;
 
+    /* ================= PRICES (SIZE) ================= */
+    @OneToMany(
+        mappedBy = "product",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
+    private List<ProductPrice> prices;
+
+    /* ================= PROMOTION ================= */
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<PromotionProduct> promotionProducts;
+
+    /* ================= AUDIT ================= */
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -50,9 +66,7 @@ public class Product {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
-@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-@JsonIgnore // <-- Đã thêm
-private List<PromotionProduct> promotionProducts;
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

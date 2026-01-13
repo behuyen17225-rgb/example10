@@ -9,10 +9,14 @@ import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
     Optional<User> findByUsername(String username);
+
+    Optional<User> findByEmail(String email); // ✅ THÊM DÒNG NÀY
+
     Boolean existsByUsername(String username);
+
     Boolean existsByEmail(String email);
 
-    // Thay String bằng ERole
     Page<User> findDistinctByRoles_Name(ERole roleName, Pageable pageable);
 }

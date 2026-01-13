@@ -10,6 +10,7 @@ import com.nguyenthithuhuyen.example10.payload.response.MessageResponse;
 import com.nguyenthithuhuyen.example10.repository.RoleRepository;
 import com.nguyenthithuhuyen.example10.repository.UserRepository;
 import com.nguyenthithuhuyen.example10.security.jwt.JwtUtils;
+import com.nguyenthithuhuyen.example10.security.services.PasswordResetOtpService;
 import com.nguyenthithuhuyen.example10.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,16 +21,20 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
+
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
+
+    private final PasswordResetOtpService otpService;
 
     @Autowired
     AuthenticationManager authenticationManager;
@@ -46,6 +51,27 @@ public class AuthController {
     @Autowired
     JwtUtils jwtUtils;
 
+    // ✅ CONSTRUCTOR
+    public AuthController(PasswordResetOtpService otpService) {
+        this.otpService = otpService;
+    }
+
+    // --------- QUÊN MẬT KHẨU (OTP) ----------
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        otpService.createOtp(email);
+        return ResponseEntity.ok(Map.of("message", "OTP đã được gửi email"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @RequestParam String email,
+            @RequestParam String otp,
+            @RequestParam String newPassword
+    ) {
+        otpService.resetPassword(email, otp, newPassword);
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
     // ----------------- Đăng nhập -----------------
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {

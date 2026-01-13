@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,22 +27,18 @@ public class OrderService {
     private final UserRepository userRepository;
     private final TableRepository tableRepository;
     private final ProductRepository productRepository;
-    private final PromotionRepository promotionRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     // ==========================================================
-    // HÀM CHUNG DÙNG CHUNG CHO KHÁCH VÀ NHÂN VIÊN (KHÔNG SOCKET)
+    // API CHUNG (KHÁCH + NHÂN VIÊN)
     // ==========================================================
     @Transactional
     public Order processOrder(Order orderRequest, String username) {
 
-        // 1) XÁC ĐỊNH USER
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
-
         orderRequest.setUser(user);
 
-        // 2) KIỂM TRA BÀN
         if (orderRequest.getTable() == null || orderRequest.getTable().getId() == null)
             throw new RuntimeException("Table is required");
 
@@ -52,31 +47,29 @@ public class OrderService {
         TableEntity table = tableRepository.findById(tableId)
                 .orElseThrow(() -> new RuntimeException("Table not found: " + tableId));
 
-        // 3) KIỂM TRA ORDER ĐANG MỞ
-        Order existing = orderRepository.findFirstByTable_IdAndStatusIn(
-                tableId,
-                Arrays.asList(OrderStatus.PENDING, OrderStatus.PREPARING)
-        ).orElse(null);
+        Order existingOrder = orderRepository
+                .findFirstByTable_IdAndStatusIn(
+                        tableId,
+                        Arrays.asList(OrderStatus.PENDING, OrderStatus.PREPARING)
+                ).orElse(null);
 
-        if (existing == null) {
-            // TẠO MỚI
+        if (existingOrder == null) {
             return createNewOrder(orderRequest, user, table);
         }
 
-        // BÀN ĐANG CÓ ORDER → THÊM MÓN
-        return addItemsToOrder(existing, orderRequest.getOrderItems());
+        return addItemsToOrder(existingOrder, orderRequest.getOrderItems());
     }
 
     // ==========================================================
-    // TẠO MỚI ORDER
+    // TẠO ORDER MỚI
     // ==========================================================
     private Order createNewOrder(Order order, User user, TableEntity table) {
 
-        order.setUser(user);
-        order.setTable(table);
-
         if (order.getOrderItems() == null || order.getOrderItems().isEmpty())
             throw new RuntimeException("Order must contain items");
+
+        order.setUser(user);
+        order.setTable(table);
 
         BigDecimal total = BigDecimal.ZERO;
 
@@ -88,10 +81,15 @@ public class OrderService {
             item.setOrder(order);
             item.setProduct(product);
 
-            int qty = (item.getQuantity() == null || item.getQuantity() <= 0) ? 1 : item.getQuantity();
-            BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(qty));
+            int qty = (item.getQuantity() == null || item.getQuantity() <= 0)
+                    ? 1
+                    : item.getQuantity();
 
-            item.setPrice(product.getPrice());
+            // ✅ GIÁ THEO SIZE
+            BigDecimal price = getPriceBySize(product, item.getSize());
+            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
+
+            item.setPrice(price);
             item.setSubtotal(subtotal);
 
             total = total.add(subtotal);
@@ -100,12 +98,10 @@ public class OrderService {
         order.setTotalAmount(total);
         order.setDiscount(BigDecimal.ZERO);
         order.setFinalAmount(total);
-
         order.setStatus(OrderStatus.PREPARING);
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
 
-        // CẬP NHẬT TRẠNG THÁI BÀN
         table.setStatus(Status.OCCUPIED);
         tableRepository.save(table);
 
@@ -130,10 +126,15 @@ public class OrderService {
             item.setOrder(existing);
             item.setProduct(product);
 
-            int qty = (item.getQuantity() == null || item.getQuantity() <= 0) ? 1 : item.getQuantity();
-            BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(qty));
+            int qty = (item.getQuantity() == null || item.getQuantity() <= 0)
+                    ? 1
+                    : item.getQuantity();
 
-            item.setPrice(product.getPrice());
+            // ✅ GIÁ THEO SIZE
+            BigDecimal price = getPriceBySize(product, item.getSize());
+            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
+
+            item.setPrice(price);
             item.setSubtotal(subtotal);
 
             existing.getOrderItems().add(item);
@@ -148,58 +149,56 @@ public class OrderService {
     }
 
     // ==========================================================
-    // KHÁCH TẠO ORDER — GIỮ NGUYÊN TÊN PHƯƠNG THỨC
+    // HÀM LẤY GIÁ THEO SIZE (QUAN TRỌNG)
+    // ==========================================================
+    private BigDecimal getPriceBySize(Product product, String size) {
+        if (size == null || size.isBlank())
+            throw new RuntimeException("Size is required");
+
+        return product.getPrices().stream()
+                .filter(p -> p.getSize().equalsIgnoreCase(size))
+                .findFirst()
+                .orElseThrow(() ->
+                        new RuntimeException("Price not found for size: " + size))
+                .getPrice();
+    }
+
+    // ==========================================================
+    // KHÁCH TẠO ORDER (CÓ SOCKET)
     // ==========================================================
     @Transactional
-    public Order createOrder(Order orderRequest, String username, boolean isStaff) {
+    public Order createOrder(Order orderRequest, String username) {
         Order saved = processOrder(orderRequest, username);
-
-        // KHÁCH → CÓ SOCKET
         messagingTemplate.convertAndSend("/topic/orders", saved);
-
         return saved;
     }
 
     // ==========================================================
-    // NHÂN VIÊN TẠO ORDER — GIỮ NGUYÊN TÊN PHƯƠNG THỨC
+    // NHÂN VIÊN TẠO ORDER (KHÔNG SOCKET)
     // ==========================================================
     @Transactional
     public Order staffCreateOrder(Order orderRequest, String staffUsername) {
-        // NHÂN VIÊN → KHÔNG SOCKET
         return processOrder(orderRequest, staffUsername);
     }
 
     // ==========================================================
-    // CÁC HÀM KHÁC GIỮ NGUYÊN
+    // CÁC API KHÁC (GIỮ NGUYÊN)
     // ==========================================================
+    public Order getOrderById(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+    }
 
-    public Order getOrderByIdAndCheckOwner(Long orderId, String username) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
-
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Set<String> roleNames = currentUser.getRoles().stream()
-                .map(r -> r.getName().name())
-                .collect(Collectors.toSet());
-
-        if (!roleNames.contains("ROLE_ADMIN") && !roleNames.contains("ROLE_MODERATOR")) {
-            if (!order.getUser().getUsername().equals(username)) {
-                throw new RuntimeException("Access denied");
-            }
-        }
-        return order;
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
     }
 
     @Transactional
-    public Order updateOrderStatus(Long orderId, OrderStatus newStatus) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    public Order updateOrderStatus(Long orderId, OrderStatus status) {
+        Order order = getOrderById(orderId);
+        order.setStatus(status);
 
-        order.setStatus(newStatus);
-
-        if (newStatus == OrderStatus.PAID || newStatus == OrderStatus.CANCELLED) {
+        if (status == OrderStatus.PAID || status == OrderStatus.CANCELLED) {
             TableEntity table = order.getTable();
             if (table != null) {
                 table.setStatus(Status.FREE);
@@ -211,17 +210,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
-    }
-
-    public Order getOrderById(Long orderId) {
-        return orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
-    }
-
     public List<Map<String, Object>> getTopSellingProducts(int topN) {
-        return orderRepository.findTopSellingProducts(OrderStatus.PAID, PageRequest.of(0, topN));
+        return orderRepository.findTopSellingProducts(
+                OrderStatus.PAID,
+                PageRequest.of(0, topN)
+        );
     }
 
     public List<Map<String, Object>> getRevenueByCategory() {
@@ -230,19 +223,5 @@ public class OrderService {
 
     public List<Map<String, Object>> getRevenueByDay() {
         return orderRepository.findRevenueByDay(OrderStatus.PAID);
-    }
-
-    public Order getOpenOrderByTableId(Long tableId) {
-        return orderRepository.findFirstByTable_IdAndStatusIn(
-                tableId,
-                Arrays.asList(OrderStatus.PENDING, OrderStatus.PREPARING)
-        ).orElse(null);
-    }
-
-    public List<Order> findByTableIdAndStatus(Long tableId, OrderStatus status) {
-        if (status == null)
-            return orderRepository.findByTable_Id(tableId);
-
-        return orderRepository.findByTable_IdAndStatus(tableId, status);
     }
 }

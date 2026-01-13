@@ -28,7 +28,7 @@ public class UserOrderController {
     public ResponseEntity<?> createOrder(@RequestBody Order order, Principal principal) {
         try {
             // isStaff = false vì đây là API dành cho Khách hàng
-            Order saved = orderService.createOrder(order, principal.getName(), false); 
+            Order saved = orderService.createOrder(order, principal.getName()); 
             
             // Trả về 201 CREATED (Tốt hơn 200 OK cho POST)
             return new ResponseEntity<>(saved, HttpStatus.CREATED);
