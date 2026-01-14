@@ -24,7 +24,6 @@ public class OrderController {
     /* =====================================================
        ADMIN / MODERATOR – LẤY TẤT CẢ ORDER
        ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
     @GetMapping
     public ResponseEntity<List<Order>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());
