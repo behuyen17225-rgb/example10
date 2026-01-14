@@ -35,21 +35,49 @@ public class OrderService {
     @Transactional
     public Order createOrder(Order orderRequest, String username) {
 
+        /* ===== USER ===== */
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() ->
                         new RuntimeException("User not found: " + username));
 
+        /* ===== VALIDATE ITEMS ===== */
         if (orderRequest.getOrderItems() == null
                 || orderRequest.getOrderItems().isEmpty()) {
             throw new RuntimeException("Order must contain items");
         }
 
+        /* ===== SET ORDER BASIC ===== */
         orderRequest.setUser(user);
         orderRequest.setStatus(OrderStatus.PENDING);
 
-        BigDecimal total = BigDecimal.ZERO;
+        // ===== DEFAULT CUSTOMER INFO =====
+        if (orderRequest.getCustomerName() == null
+                || orderRequest.getCustomerName().isBlank()) {
+            orderRequest.setCustomerName(user.getUsername());
+        }
+
+        if (orderRequest.getAddress() == null
+                || orderRequest.getAddress().isBlank()) {
+            orderRequest.setAddress("Tại quán");
+        }
+
+        if (orderRequest.getPhone() == null
+                || orderRequest.getPhone().isBlank()) {
+            orderRequest.setPhone("0000000000");
+        }
+
+        if (orderRequest.getPaymentMethod() == null
+                || orderRequest.getPaymentMethod().isBlank()) {
+            orderRequest.setPaymentMethod("CASH");
+        }
+
+        if (orderRequest.getDiscount() == null) {
+            orderRequest.setDiscount(BigDecimal.ZERO);
+        }
 
         /* ===== PROCESS ITEMS ===== */
+        BigDecimal total = BigDecimal.ZERO;
+
         for (OrderItem item : orderRequest.getOrderItems()) {
 
             Product product = productRepository
@@ -66,14 +94,6 @@ public class OrderService {
 
             BigDecimal price = getPriceBySize(product, item.getSize());
             BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
-if (orderRequest.getAddress() == null) {
-    orderRequest.setAddress("Tại quán");
-}
-if (orderRequest.getCustomerName() == null
-    || orderRequest.getCustomerName().isBlank()) {
-    orderRequest.setCustomerName(user.getUsername());
-}
-
 
             item.setQuantity(qty);
             item.setPrice(price);
@@ -82,28 +102,23 @@ if (orderRequest.getCustomerName() == null
             total = total.add(subtotal);
         }
 
+        /* ===== TOTAL ===== */
         orderRequest.setTotalAmount(total);
-        orderRequest.setDiscount(
-                orderRequest.getDiscount() == null
-                        ? BigDecimal.ZERO
-                        : orderRequest.getDiscount()
-        );
         orderRequest.setFinalAmount(
                 total.subtract(orderRequest.getDiscount())
         );
-        orderRequest.setCreatedAt(LocalDateTime.now());
-        orderRequest.setUpdatedAt(LocalDateTime.now());
 
+        /* ===== SAVE ===== */
         Order saved = orderRepository.save(orderRequest);
 
-        /* ===== SOCKET CHO ADMIN ===== */
+        /* ===== SOCKET ===== */
         messagingTemplate.convertAndSend("/topic/orders", saved);
 
         return saved;
     }
 
     /* ==========================================================
-       NHÂN VIÊN TẠO ORDER (KHÔNG SOCKET)
+       NHÂN VIÊN TẠO ORDER
        ========================================================== */
     @Transactional
     public Order staffCreateOrder(Order orderRequest, String staffUsername) {
@@ -121,13 +136,7 @@ if (orderRequest.getCustomerName() == null
                         new RuntimeException("Order not found"));
 
         order.setStatus(status);
-        order.setUpdatedAt(LocalDateTime.now());
-
-        Order saved = orderRepository.save(order);
-
-        messagingTemplate.convertAndSend("/topic/orders", saved);
-
-        return saved;
+        return orderRepository.save(order);
     }
 
     /* ==========================================================
@@ -139,17 +148,15 @@ if (orderRequest.getCustomerName() == null
             throw new RuntimeException("Size is required");
 
         return product.getPrices().stream()
-                .filter(p ->
-                        p.getSize().equalsIgnoreCase(size))
+                .filter(p -> p.getSize().equalsIgnoreCase(size))
                 .findFirst()
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Price not found for size: " + size))
+                        new RuntimeException("Price not found for size: " + size))
                 .getPrice();
     }
 
     /* ==========================================================
-       CÁC API KHÁC
+       OTHER APIs
        ========================================================== */
     public Order getOrderById(Long id) {
         return orderRepository.findById(id)

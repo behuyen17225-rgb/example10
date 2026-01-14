@@ -25,23 +25,23 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ===== USER =====
+    /* ================= USER ================= */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 
-    // ===== TABLE =====
+    /* ================= TABLE ================= */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "table_id")
     private TableEntity table;
 
-    // ===== STATUS =====
+    /* ================= STATUS ================= */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
 
-    // ===== MONEY =====
+    /* ================= MONEY ================= */
     @Column(name = "total_amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
@@ -51,19 +51,35 @@ public class Order {
     @Column(name = "final_amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal finalAmount = BigDecimal.ZERO;
 
-    // ===== PROMOTION =====
+    /* ================= CUSTOMER INFO ================= */
+    @Column(name = "customer_name", nullable = false)
+    private String customerName;
+
+    @Column(nullable = false)
+    private String address;
+
+    @Column(nullable = false)
+    private String phone;
+
+    @Column(name = "payment_method", nullable = false)
+    private String paymentMethod; // CASH | MOMO | BANK
+
+    @Column(columnDefinition = "TEXT")
+    private String note;
+
+    /* ================= PROMOTION ================= */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Promotion promotion;
 
-    // ===== BILL =====
+    /* ================= BILL ================= */
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     @ToString.Exclude
     private Bill bill;
 
-    // ===== ORDER ITEMS =====
+    /* ================= ORDER ITEMS ================= */
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
@@ -73,23 +89,19 @@ public class Order {
     @ToString.Exclude
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    // ===== TIME =====
+    /* ================= TIME ================= */
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // ===== AUTO TIME =====
+    /* ================= AUTO TIME ================= */
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
-@Column(name = "address")
-private String address;
-@Column(name = "customer_name")
-private String customerName;
 
     @PreUpdate
     protected void onUpdate() {
