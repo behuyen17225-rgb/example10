@@ -33,7 +33,6 @@ public class OrderController {
     /* =====================================================
        KHÁCH TẠO / THÊM ORDER (CÓ SOCKET)
        ===================================================== */
-@PreAuthorize("hasAnyRole('USER','MODERATOR')")
 @PostMapping
 public ResponseEntity<?> createOrder(@RequestBody Order order) {
     String username = SecurityContextHolder
