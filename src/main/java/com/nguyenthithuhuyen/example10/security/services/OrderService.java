@@ -66,6 +66,9 @@ public class OrderService {
 
             BigDecimal price = getPriceBySize(product, item.getSize());
             BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
+if (orderRequest.getAddress() == null) {
+    orderRequest.setAddress("Tại quán");
+}
 
             item.setQuantity(qty);
             item.setPrice(price);

@@ -86,6 +86,8 @@ public class Order {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
+@Column(name = "address")
+private String address;
 
     @PreUpdate
     protected void onUpdate() {
