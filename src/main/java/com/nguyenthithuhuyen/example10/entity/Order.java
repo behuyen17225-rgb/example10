@@ -14,87 +14,81 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /* ================= USER ================= */
+    // ===== USER =====
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 
-    /* ================= STATUS ================= */
+    // ===== TABLE =====
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "table_id")
+    private TableEntity table;
+
+    // ===== STATUS =====
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
 
-    /* ================= CUSTOMER INFO ================= */
-    @Column(nullable = false)
-    private String customerName;
-
-    @Column(nullable = false, length = 20)
-    private String phone;
-
-    @Column(nullable = false)
-    private String address;
-
-    @Column(length = 255)
-    private String note;
-
-    /* ================= PAYMENT ================= */
-    @Column(nullable = false)
-    private String paymentMethod; // cash | momo | bank
-
-    /* ================= MONEY ================= */
-    @Column(name = "total_amount", precision = 10, scale = 2)
+    // ===== MONEY =====
+    @Column(name = "total_amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    @Column(name = "discount", precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal discount = BigDecimal.ZERO;
 
-    @Column(name = "final_amount", precision = 10, scale = 2)
+    @Column(name = "final_amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal finalAmount = BigDecimal.ZERO;
 
-    /* ================= PROMOTION ================= */
+    // ===== PROMOTION =====
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Promotion promotion;
 
-    /* ================= ITEMS ================= */
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    // ===== BILL =====
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @ToString.Exclude
+    private Bill bill;
+
+    // ===== ORDER ITEMS =====
+    @OneToMany(
+            mappedBy = "order",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     @JsonManagedReference
+    @ToString.Exclude
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    /* ================= AUDIT ================= */
+    // ===== TIME =====
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /* ================= LIFECYCLE ================= */
+    // ===== AUTO TIME =====
     @PrePersist
     protected void onCreate() {
-        calculateFinalAmount();
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        calculateFinalAmount();
-        updatedAt = LocalDateTime.now();
-    }
-
-    /* ================= HELPER ================= */
-    private void calculateFinalAmount() {
-        if (totalAmount == null) totalAmount = BigDecimal.ZERO;
-        if (discount == null) discount = BigDecimal.ZERO;
-        finalAmount = totalAmount.subtract(discount);
+        this.updatedAt = LocalDateTime.now();
     }
 }
