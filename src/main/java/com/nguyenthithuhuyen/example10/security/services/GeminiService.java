@@ -15,25 +15,18 @@ public class GeminiService {
     @Value("${gemini.api-key}")
     private String apiKey;
 
-    @Value("${gemini.base-url}")
-    private String baseUrl;
-
-    @Value("${gemini.model}")
-    private String model;
-
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String chat(String message) {
         try {
-           String url = baseUrl
-    + "/v1beta/models/"
-    + model
-    + ":generateContent";
+            String url =
+                "https://generativelanguage.googleapis.com" +
+                "/v1beta/models/gemini-pro:generateContent" +
+                "?key=" + apiKey;
 
             Map<String, Object> body = Map.of(
                 "contents", List.of(
                     Map.of(
-                        "role", "user",
                         "parts", List.of(
                             Map.of("text", message)
                         )
@@ -43,7 +36,6 @@ public class GeminiService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("x-goog-api-key", apiKey);
 
             HttpEntity<Map<String, Object>> entity =
                 new HttpEntity<>(body, headers);

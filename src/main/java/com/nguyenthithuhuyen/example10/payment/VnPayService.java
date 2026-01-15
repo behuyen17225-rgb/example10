@@ -10,8 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.*;
+
 
 @Service
 public class VnPayService {
@@ -30,40 +32,68 @@ public class VnPayService {
 
     public String createPaymentUrl(Order order) {
 
-        long amount = order.getFinalAmount()
-                .multiply(BigDecimal.valueOf(100))
-                .toBigInteger()
-                .longValue();
-
-        Map<String, String> params = new TreeMap<>();
+        Map<String, String> params = new HashMap<>();
 
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
         params.put("vnp_TmnCode", tmnCode);
-        params.put("vnp_Amount", String.valueOf(amount));
+        params.put("vnp_Amount",
+                order.getFinalAmount()
+                        .multiply(BigDecimal.valueOf(100))
+                        .toBigInteger()
+                        .toString()
+        );
         params.put("vnp_CurrCode", "VND");
-        params.put("vnp_TxnRef", order.getId().toString());
-        params.put("vnp_OrderInfo", "Thanh toan don hang #" + order.getId());
+        params.put("vnp_TxnRef", String.valueOf(order.getId()));
+        params.put("vnp_OrderInfo", "Thanh toan don hang " + order.getId());
+        params.put("vnp_OrderType", "other");
         params.put("vnp_Locale", "vn");
         params.put("vnp_ReturnUrl", returnUrl);
-        params.put("vnp_CreateDate",
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        params.put("vnp_IpAddr", "127.0.0.1");
 
-        // CHUỖI HASH (KHÔNG encode)
-        String hashData = params.entrySet()
-                .stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(Collectors.joining("&"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        params.put("vnp_CreateDate", LocalDateTime.now().format(formatter));
 
-        String secureHash = VnPayUtil.hmacSHA512(hashSecret, hashData);
+        // SORT PARAMS
+        List<String> fieldNames = new ArrayList<>(params.keySet());
+        Collections.sort(fieldNames);
 
-        // CHUỖI URL (CÓ encode)
-        String query = params.entrySet()
-                .stream()
-                .map(e -> e.getKey() + "=" +
-                        URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
+        StringBuilder hashData = new StringBuilder();
+        StringBuilder query = new StringBuilder();
 
-        return payUrl + "?" + query + "&vnp_SecureHash=" + secureHash;
+        for (String field : fieldNames) {
+            String value = params.get(field);
+            if (value != null && !value.isEmpty()) {
+                hashData.append(field).append('=').append(value).append('&');
+                query.append(URLEncoder.encode(field, StandardCharsets.UTF_8))
+                     .append('=')
+                     .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
+                     .append('&');
+            }
+        }
+
+        hashData.setLength(hashData.length() - 1);
+        query.setLength(query.length() - 1);
+
+        String secureHash = hmacSHA512(hashSecret, hashData.toString());
+        query.append("&vnp_SecureHash=").append(secureHash);
+
+        return payUrl + "?" + query;
+    }
+
+    private String hmacSHA512(String key, String data) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(), "HmacSHA512");
+            mac.init(secretKey);
+            byte[] raw = mac.doFinal(data.getBytes());
+            StringBuilder hex = new StringBuilder();
+            for (byte b : raw) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating hash", e);
+        }
     }
 }
