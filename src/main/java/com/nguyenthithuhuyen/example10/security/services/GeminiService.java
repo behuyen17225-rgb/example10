@@ -1,14 +1,24 @@
 package com.nguyenthithuhuyen.example10.security.services;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.*;
+
+import jakarta.annotation.PostConstruct;
 
 import java.util.*;
 
 @Service
 public class GeminiService {
+@PostConstruct
+public void debug() {
+    System.out.println("GEMINI KEY = " + apiKey);
+    System.out.println("BASE URL = " + baseUrl);
+}
+
+    @Value("${gemini.api-key}")
+    private String apiKey;
 
     @Value("${gemini.base-url}")
     private String baseUrl;
@@ -16,35 +26,32 @@ public class GeminiService {
     @Value("${gemini.model}")
     private String model;
 
-    @Value("${gemini.api-key}")
-    private String apiKey;
-
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String chat(String message) {
+
+        String url = baseUrl +
+                "/v1beta/models/" + model + ":generateContent";
+
+        Map<String, Object> body = Map.of(
+                "contents", List.of(
+                        Map.of(
+                                "role", "user",
+                                "parts", List.of(
+                                        Map.of("text", message)
+                                )
+                        )
+                )
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-goog-api-key", apiKey);
+
+        HttpEntity<Map<String, Object>> entity =
+                new HttpEntity<>(body, headers);
+
         try {
-            // ✅ URL chuẩn Gemini
-            String url = baseUrl +
-                    "/v1beta/models/" + model + ":generateContent?key=" + apiKey;
-
-            // ✅ Request body
-            Map<String, Object> body = Map.of(
-                    "contents", List.of(
-                            Map.of(
-                                    "role", "user",
-                                    "parts", List.of(
-                                            Map.of("text", message)
-                                    )
-                            )
-                    )
-            );
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<Map<String, Object>> entity =
-                    new HttpEntity<>(body, headers);
-
             ResponseEntity<Map> response =
                     restTemplate.postForEntity(url, entity, Map.class);
 
