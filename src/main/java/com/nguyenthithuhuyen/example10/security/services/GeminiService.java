@@ -25,7 +25,10 @@ public class GeminiService {
 
     public String chat(String message) {
         try {
-            String url = baseUrl + "/v1/models/" + model + ":generateContent";
+           String url = baseUrl
+    + "/v1beta/models/"
+    + model
+    + ":generateContent";
 
             Map<String, Object> body = Map.of(
                 "contents", List.of(
