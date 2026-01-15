@@ -18,28 +18,29 @@ public class GeminiService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String chat(String message) {
-        try {
-            String url =
-                "https://generativelanguage.googleapis.com" +
-                "/v1beta/models/gemini-pro:generateContent" +
-                "?key=" + apiKey;
 
-            Map<String, Object> body = Map.of(
-                "contents", List.of(
-                    Map.of(
-                        "parts", List.of(
-                            Map.of("text", message)
-                        )
+        String url =
+            "https://generativelanguage.googleapis.com" +
+            "/v1beta/models/gemini-1.5-pro-001:generateContent" +
+            "?key=" + apiKey;
+
+        Map<String, Object> body = Map.of(
+            "contents", List.of(
+                Map.of(
+                    "parts", List.of(
+                        Map.of("text", message)
                     )
                 )
-            );
+            )
+        );
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<Map<String, Object>> entity =
-                new HttpEntity<>(body, headers);
+        HttpEntity<Map<String, Object>> entity =
+            new HttpEntity<>(body, headers);
 
+        try {
             ResponseEntity<Map> response =
                 restTemplate.postForEntity(url, entity, Map.class);
 
