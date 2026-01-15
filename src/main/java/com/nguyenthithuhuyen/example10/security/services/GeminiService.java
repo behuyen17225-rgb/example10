@@ -10,18 +10,18 @@ import jakarta.annotation.PostConstruct;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class GeminiService {
 
-    @Value("${gemini.api-key}")
+    @Value("${gemini.api.key}")
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String askGemini(String prompt) {
+
         String url =
-            "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key="
-            + apiKey;
+            "https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent"
+            + "?key=" + apiKey;
 
         Map<String, Object> body = Map.of(
             "contents", List.of(
@@ -36,22 +36,28 @@ public class GeminiService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<?> entity = new HttpEntity<>(body, headers);
+        HttpEntity<Map<String, Object>> entity =
+            new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> res =
-                restTemplate.postForEntity(url, entity, Map.class);
+            ResponseEntity<Map> res = restTemplate.postForEntity(
+                url, entity, Map.class
+            );
 
-            var candidates = (List<?>) res.getBody().get("candidates");
-            if (candidates == null || candidates.isEmpty()) return "AI không trả lời";
+            Map<String, Object> candidate =
+                ((List<Map<String, Object>>) res.getBody().get("candidates")).get(0);
 
-            var content = (Map<?, ?>) ((Map<?, ?>) candidates.get(0)).get("content");
-            var parts = (List<?>) content.get("parts");
+            Map<String, Object> content =
+                (Map<String, Object>) candidate.get("content");
 
-            return parts.get(0).toString().replace("{text=", "").replace("}", "");
+            List<Map<String, Object>> parts =
+                (List<Map<String, Object>>) content.get("parts");
+
+            return parts.get(0).get("text").toString();
+
         } catch (Exception e) {
             e.printStackTrace();
-            return "❌ Gemini lỗi";
+            return "Gemini error";
         }
     }
 }
