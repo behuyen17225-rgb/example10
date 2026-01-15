@@ -20,9 +20,8 @@ public class ChatController {
     private String apiKey;
 
     // Sử dụng model ổn định nhất cho báo cáo
-    private final String MODEL_NAME = "gemini-1.5-flash";
+    private final String MODEL_NAME = "gemini-2.5-flash"; 
     private final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
-
     @PostMapping
     public ResponseEntity<?> getChatResponse(@RequestBody Map<String, String> request) {
         String userPrompt = request.get("prompt");
