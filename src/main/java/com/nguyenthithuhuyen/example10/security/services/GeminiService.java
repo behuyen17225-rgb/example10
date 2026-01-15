@@ -31,7 +31,7 @@ public void debug() {
     public String chat(String message) {
 
         String url = baseUrl +
-                "/v1beta/models/" + model + ":generateContent";
+        "/v1/models/" + model + ":generateContent";
 
         Map<String, Object> body = Map.of(
                 "contents", List.of(
