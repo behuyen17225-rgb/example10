@@ -14,6 +14,7 @@ public class EmailService {
     public void sendOtpEmail(String to, String otp) {
 
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("nguyenhuyenla209@gmail.com"); // 👈 EMAIL ĐÃ VERIFY TRÊN SENDGRID
         message.setTo(to);
         message.setSubject("Mã OTP đặt lại mật khẩu");
         message.setText(
