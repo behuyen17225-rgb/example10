@@ -4,12 +4,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
+import lombok.RequiredArgsConstructor;
 import jakarta.annotation.PostConstruct;
 
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class GeminiService {
 
     @Value("${gemini.api-key}")
@@ -17,18 +18,16 @@ public class GeminiService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public String chat(String message) {
-
+    public String askGemini(String prompt) {
         String url =
-            "https://generativelanguage.googleapis.com" +
-            "/v1beta/models/gemini-1.5-pro-001:generateContent" +
-            "?key=" + apiKey;
+            "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key="
+            + apiKey;
 
         Map<String, Object> body = Map.of(
             "contents", List.of(
                 Map.of(
                     "parts", List.of(
-                        Map.of("text", message)
+                        Map.of("text", prompt)
                     )
                 )
             )
@@ -37,30 +36,22 @@ public class GeminiService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<Map<String, Object>> entity =
-            new HttpEntity<>(body, headers);
+        HttpEntity<?> entity = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> response =
+            ResponseEntity<Map> res =
                 restTemplate.postForEntity(url, entity, Map.class);
 
-            Map<String, Object> responseBody =
-                (Map<String, Object>) response.getBody();
+            var candidates = (List<?>) res.getBody().get("candidates");
+            if (candidates == null || candidates.isEmpty()) return "AI không trả lời";
 
-            List<Map<String, Object>> candidates =
-                (List<Map<String, Object>>) responseBody.get("candidates");
+            var content = (Map<?, ?>) ((Map<?, ?>) candidates.get(0)).get("content");
+            var parts = (List<?>) content.get("parts");
 
-            Map<String, Object> content =
-                (Map<String, Object>) candidates.get(0).get("content");
-
-            List<Map<String, Object>> parts =
-                (List<Map<String, Object>>) content.get("parts");
-
-            return parts.get(0).get("text").toString();
-
+            return parts.get(0).toString().replace("{text=", "").replace("}", "");
         } catch (Exception e) {
             e.printStackTrace();
-            return "Gemini lỗi ❌";
+            return "❌ Gemini lỗi";
         }
     }
 }
