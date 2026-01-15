@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import jakarta.transaction.Transactional;
 
 
 @Service
@@ -20,6 +21,7 @@ public class PasswordResetOtpService {
     private final EmailService emailService;
 
     // Gửi OTP
+    @Transactional
     public void sendOtp(String email) {
 
         User user = userRepo.findByEmail(email)
@@ -49,6 +51,7 @@ public class PasswordResetOtpService {
     }
 
     // Đổi mật khẩu
+    @Transactional
     public void resetPassword(String email, String otp, String newPassword) {
 
         PasswordResetOtp resetOtp = otpRepo
