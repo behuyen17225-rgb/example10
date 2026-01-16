@@ -28,60 +28,75 @@ public class VnPayService {
     @Value("${vnpay.returnUrl}")
     private String returnUrl;
 
-    public String createPaymentUrl(Order order, String ipAddr) {
+public String createPaymentUrl(Order order, String ipAddr) {
 
-        Map<String, String> params = new HashMap<>();
+    Map<String, String> params = new HashMap<>();
 
-        params.put("vnp_Version", "2.1.0");
-        params.put("vnp_Command", "pay");
-        params.put("vnp_TmnCode", tmnCode.trim());
-        params.put("vnp_Amount",
-                order.getFinalAmount()
-                        .multiply(BigDecimal.valueOf(100))
-                        .toBigInteger()
-                        .toString());
-        params.put("vnp_CurrCode", "VND");
-        params.put("vnp_TxnRef", String.valueOf(order.getId()));
-        params.put("vnp_OrderInfo", "Thanh toan don hang " + order.getId());
-        params.put("vnp_OrderType", "other");
-        params.put("vnp_Locale", "vn");
-        params.put("vnp_IpAddr", ipAddr);
-        params.put("vnp_ReturnUrl", returnUrl.trim());
-        params.put("vnp_CreateDate",
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+    params.put("vnp_Version", "2.1.0");
+    params.put("vnp_Command", "pay");
+    params.put("vnp_TmnCode", tmnCode);
+    params.put("vnp_Amount",
+            order.getFinalAmount()
+                    .multiply(BigDecimal.valueOf(100))
+                    .toBigInteger()
+                    .toString());
+    params.put("vnp_CurrCode", "VND");
+    params.put("vnp_TxnRef", String.valueOf(order.getId()));
 
-        // ===== SORT PARAMS =====
-        List<String> keys = new ArrayList<>(params.keySet());
-        Collections.sort(keys);
+    // ⚠️ QUAN TRỌNG
+    params.put(
+        "vnp_OrderInfo",
+        "Thanh toan don hang :" + order.getId()
+    );
 
-        // ===== HASH DATA (KHÔNG ENCODE) =====
-        StringBuilder hashData = new StringBuilder();
-        for (String key : keys) {
-            String value = params.get(key);
-            if (value != null && !value.isEmpty()) {
-                hashData.append(key).append("=").append(value).append("&");
-            }
+    params.put("vnp_OrderType", "other");
+    params.put("vnp_Locale", "vn");
+    params.put("vnp_IpAddr", ipAddr);
+
+    // ⚠️ KHÔNG trim
+    params.put("vnp_ReturnUrl", returnUrl);
+
+    params.put(
+        "vnp_CreateDate",
+        LocalDateTime.now().format(
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+        )
+    );
+
+    // ===== SORT =====
+    List<String> keys = new ArrayList<>(params.keySet());
+    Collections.sort(keys);
+
+    // ===== HASH DATA (RAW – KHÔNG ENCODE) =====
+    StringBuilder hashData = new StringBuilder();
+    for (String key : keys) {
+        String value = params.get(key);
+        if (value != null && !value.isEmpty()) {
+            hashData.append(key).append("=").append(value).append("&");
         }
-        hashData.setLength(hashData.length() - 1);
-
-        // ===== QUERY STRING (CÓ ENCODE) =====
-        StringBuilder query = new StringBuilder();
-        for (String key : keys) {
-            String value = params.get(key);
-            if (value != null && !value.isEmpty()) {
-                query.append(URLEncoder.encode(key, StandardCharsets.UTF_8))
-                     .append("=")
-                     .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
-                     .append("&");
-            }
-        }
-        query.setLength(query.length() - 1);
-
-        String secureHash = hmacSHA512(hashSecret.trim(), hashData.toString());
-
-        return payUrl + "?" + query + "&vnp_SecureHash=" + secureHash;
     }
+    hashData.setLength(hashData.length() - 1);
 
+    // ===== QUERY STRING (ENCODE) =====
+    StringBuilder query = new StringBuilder();
+    for (String key : keys) {
+        String value = params.get(key);
+        if (value != null && !value.isEmpty()) {
+            query.append(URLEncoder.encode(key, StandardCharsets.UTF_8))
+                 .append("=")
+                 .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
+                 .append("&");
+        }
+    }
+    query.setLength(query.length() - 1);
+    System.out.println("HASH DATA = " + hashData);
+
+
+    String secureHash =
+            hmacSHA512(hashSecret, hashData.toString());
+
+    return payUrl + "?" + query + "&vnp_SecureHash=" + secureHash;
+}
     /* ================= VERIFY CALLBACK ================= */
 
     public boolean verifyCallback(Map<String, String> params) {
