@@ -101,4 +101,39 @@ public class OrderController {
                 orderService.updateOrderStatus(id, newStatus)
         );
     }
+
+    /* =====================================================
+       STATS – TOP SELLING PRODUCTS
+       ===================================================== */
+    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
+    @GetMapping("/stats/top-selling")
+    public ResponseEntity<List<?>> getTopSellingProducts(
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        return ResponseEntity.ok(
+                orderService.getTopSellingProducts(limit)
+        );
+    }
+
+    /* =====================================================
+       STATS – DAILY REVENUE
+       ===================================================== */
+    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
+    @GetMapping("/stats/daily-revenue")
+    public ResponseEntity<List<?>> getDailyRevenue() {
+        return ResponseEntity.ok(
+                orderService.getRevenueByDay()
+        );
+    }
+
+    /* =====================================================
+       STATS – REVENUE BY CATEGORY
+       ===================================================== */
+    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
+    @GetMapping("/stats/revenue-by-category")
+    public ResponseEntity<List<?>> getRevenueByCategory() {
+        return ResponseEntity.ok(
+                orderService.getRevenueByCategory()
+        );
+    }
 }

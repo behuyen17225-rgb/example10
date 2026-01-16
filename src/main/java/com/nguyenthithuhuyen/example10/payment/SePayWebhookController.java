@@ -30,12 +30,14 @@ public class SePayWebhookController {
     @PostMapping("/webhook/debug")
     public ResponseEntity<String> sepayWebhookDebug(@RequestBody SePayWebhookRequest req) {
         log.info("📋 WEBHOOK DEBUG - All fields:");
+        log.info("  - content: {}", req.getContent());
         log.info("  - description: {}", req.getDescription());
         log.info("  - amount: {}", req.getAmount());
-        log.info("  - transaction_id: {}", req.getTransaction_id());
-        log.info("  - bank: {}", req.getBank());
-        log.info("  - status: {}", req.getStatus());
-        log.info("  - reference_code: {}", req.getReference_code());
+        log.info("  - transactionDate: {}", req.getTransactionDate());
+        log.info("  - referenceCode: {}", req.getReferenceCode());
+        log.info("  - senderName: {}", req.getSenderName());
+        log.info("  - senderAccount: {}", req.getSenderAccount());
+        log.info("  - otherFields: {}", req.getOtherFields());
         return ResponseEntity.ok("Debug logged");
     }
 
@@ -43,16 +45,16 @@ public class SePayWebhookController {
     public ResponseEntity<String> sepayWebhook(
             @RequestBody SePayWebhookRequest req) {
 
-        log.info("🔔 WEBHOOK: description={}, amount={}", req.getDescription(), req.getAmount());
+        log.info("🔔 WEBHOOK: content={}, amount={}", req.getContent(), req.getAmount());
         
-        if (req.getDescription() == null || req.getDescription().isBlank()) {
-            log.error("❌ Description is empty!");
-            return ResponseEntity.status(400).body("Description required");
+        if (req.getContent() == null || req.getContent().isBlank()) {
+            log.error("❌ Content is empty!");
+            return ResponseEntity.status(400).body("Content required");
         }
         
         try {
             orderService.markOrderPaidByWebhook(
-                    req.getDescription(),
+                    req.getContent(),
                     req.getAmount()
             );
             log.info("✅ Webhook OK");
