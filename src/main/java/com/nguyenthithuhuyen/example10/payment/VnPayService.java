@@ -50,6 +50,9 @@ public String createPaymentUrl(Order order, String ipAddr) {
     params.put("vnp_CreateDate",
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
+    // ⚠️ BẮT BUỘC CÓ
+    params.put("vnp_SecureHashType", "HmacSHA512");
+
     // ===== SORT =====
     List<String> keys = new ArrayList<>(params.keySet());
     Collections.sort(keys);
@@ -63,13 +66,11 @@ public String createPaymentUrl(Order order, String ipAddr) {
 
             String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
 
-            // ✅ HASH DATA (PHẢI ENCODE)
             hashData.append(key)
                     .append("=")
                     .append(encodedValue)
                     .append("&");
 
-            // ✅ QUERY STRING
             query.append(key)
                     .append("=")
                     .append(encodedValue)
@@ -85,11 +86,9 @@ public String createPaymentUrl(Order order, String ipAddr) {
     return payUrl
             + "?"
             + query
-            + "&vnp_SecureHashType=HmacSHA512"
             + "&vnp_SecureHash="
             + secureHash;
 }
-
     public boolean verifyCallback(Map<String, String> params) {
 
     String receivedHash = params.get("vnp_SecureHash");
