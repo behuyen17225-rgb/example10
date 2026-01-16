@@ -53,11 +53,13 @@ public class SePayService {
             throw new RuntimeException("Amount must be > 0");
         }
 
-        // ===== PAYMENT REF (CHỈ TẠO 1 LẦN) =====
+        // ===== PAYMENT REF (Đã được set trong createOrder) =====
         if (order.getPaymentRef() == null || order.getPaymentRef().isBlank()) {
-            order.setPaymentRef("ORDER_" + order.getId());
-            orderRepository.save(order);
+            log.error("❌ Payment ref not set! Order ID: {}", order.getId());
+            throw new RuntimeException("Payment ref must be set before creating QR");
         }
+
+        log.info("Using paymentRef: {}", order.getPaymentRef());
 
         String encodedName =
                 URLEncoder.encode(accountName, StandardCharsets.UTF_8);

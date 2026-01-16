@@ -24,6 +24,7 @@ public class SePayWebhookController {
             @RequestBody SePayWebhookRequest req) {
 
         log.info("🔔 WEBHOOK RECEIVED: content={}, amount={}", req.getContent(), req.getAmount());
+        log.info("Full webhook payload: {}", req.toString());
         
         try {
             orderService.markOrderPaidByWebhook(

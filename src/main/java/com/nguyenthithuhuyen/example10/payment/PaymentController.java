@@ -5,7 +5,11 @@ import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.payload.response.QrResponse;
 import com.nguyenthithuhuyen.example10.security.services.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -30,4 +34,21 @@ public class PaymentController {
 
         return sePayService.createQr(order);
     }
+
+    // 🔍 CHECK order status
+    @GetMapping("/{id}/status")
+    public ResponseEntity<Map<String, Object>> checkOrderStatus(@PathVariable Long id) {
+        Order order = orderService.getOrderById(id);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("orderId", order.getId());
+        response.put("status", order.getStatus());
+        response.put("finalAmount", order.getFinalAmount());
+        response.put("paymentRef", order.getPaymentRef());
+        response.put("paidAt", order.getPaidAt());
+        response.put("isPaid", order.getStatus() == OrderStatus.PAID);
+        
+        return ResponseEntity.ok(response);
+    }
 }
+
