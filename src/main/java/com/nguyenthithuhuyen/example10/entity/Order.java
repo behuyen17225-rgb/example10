@@ -28,7 +28,7 @@ public class Order {
     /* ================= USER ================= */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User user;
 
     /* ================= TABLE ================= */
@@ -63,6 +63,11 @@ public class Order {
 
     @Column(name = "payment_method", nullable = false)
     private String paymentMethod; // CASH | MOMO | BANK
+    @Column(name = "payment_ref", unique = true)
+    private String paymentRef; // VD: SEPAY-ORDER-123
+
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
 
     @Column(columnDefinition = "TEXT")
     private String note;
@@ -70,7 +75,7 @@ public class Order {
     /* ================= PROMOTION ================= */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private Promotion promotion;
 
     /* ================= BILL ================= */
@@ -80,11 +85,7 @@ public class Order {
     private Bill bill;
 
     /* ================= ORDER ITEMS ================= */
-    @OneToMany(
-            mappedBy = "order",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     @ToString.Exclude
     private List<OrderItem> orderItems = new ArrayList<>();

@@ -32,90 +32,103 @@ public class OrderService {
     /* ==========================================================
        KHÁCH TẠO ORDER (CHECKOUT)
        ========================================================== */
-    @Transactional
-    public Order createOrder(Order orderRequest, String username) {
+@Transactional
+public Order createOrder(Order orderRequest, String username) {
 
-        /* ===== USER ===== */
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found: " + username));
+    User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
-        /* ===== VALIDATE ITEMS ===== */
-        if (orderRequest.getOrderItems() == null
-                || orderRequest.getOrderItems().isEmpty()) {
-            throw new RuntimeException("Order must contain items");
-        }
-
-        /* ===== SET ORDER BASIC ===== */
-        orderRequest.setUser(user);
-        orderRequest.setStatus(OrderStatus.PENDING);
-
-        // ===== DEFAULT CUSTOMER INFO =====
-        if (orderRequest.getCustomerName() == null
-                || orderRequest.getCustomerName().isBlank()) {
-            orderRequest.setCustomerName(user.getUsername());
-        }
-
-        if (orderRequest.getAddress() == null
-                || orderRequest.getAddress().isBlank()) {
-            orderRequest.setAddress("Tại quán");
-        }
-
-        if (orderRequest.getPhone() == null
-                || orderRequest.getPhone().isBlank()) {
-            orderRequest.setPhone("0000000000");
-        }
-
-        if (orderRequest.getPaymentMethod() == null
-                || orderRequest.getPaymentMethod().isBlank()) {
-            orderRequest.setPaymentMethod("CASH");
-        }
-
-        if (orderRequest.getDiscount() == null) {
-            orderRequest.setDiscount(BigDecimal.ZERO);
-        }
-
-        /* ===== PROCESS ITEMS ===== */
-        BigDecimal total = BigDecimal.ZERO;
-
-        for (OrderItem item : orderRequest.getOrderItems()) {
-
-            Product product = productRepository
-                    .findById(item.getProduct().getId())
-                    .orElseThrow(() ->
-                            new RuntimeException("Product not found"));
-
-            item.setOrder(orderRequest);
-            item.setProduct(product);
-
-            int qty = (item.getQuantity() == null || item.getQuantity() <= 0)
-                    ? 1
-                    : item.getQuantity();
-
-            BigDecimal price = getPriceBySize(product, item.getSize());
-            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
-
-            item.setQuantity(qty);
-            item.setPrice(price);
-            item.setSubtotal(subtotal);
-
-            total = total.add(subtotal);
-        }
-
-        /* ===== TOTAL ===== */
-        orderRequest.setTotalAmount(total);
-        orderRequest.setFinalAmount(
-                total.subtract(orderRequest.getDiscount())
-        );
-
-        /* ===== SAVE ===== */
-        Order saved = orderRepository.save(orderRequest);
-
-        /* ===== SOCKET ===== */
-        messagingTemplate.convertAndSend("/topic/orders", saved);
-
-        return saved;
+    if (orderRequest.getOrderItems() == null || orderRequest.getOrderItems().isEmpty()) {
+        throw new RuntimeException("Order must contain items");
     }
+
+    // ===== INIT ORDER =====
+    Order order = new Order();
+    order.setUser(user);
+    order.setStatus(OrderStatus.PENDING);
+    order.setPaymentMethod(
+            orderRequest.getPaymentMethod() == null ? "BANK" : orderRequest.getPaymentMethod()
+    );
+
+    order.setCustomerName(
+            Optional.ofNullable(orderRequest.getCustomerName())
+                    .filter(s -> !s.isBlank())
+                    .orElse(user.getUsername())
+    );
+
+    order.setAddress(
+            Optional.ofNullable(orderRequest.getAddress())
+                    .filter(s -> !s.isBlank())
+                    .orElse("Tại quán")
+    );
+
+    order.setPhone(
+            Optional.ofNullable(orderRequest.getPhone())
+                    .filter(s -> !s.isBlank())
+                    .orElse("0000000000")
+    );
+
+    BigDecimal discount = Optional.ofNullable(orderRequest.getDiscount())
+            .orElse(BigDecimal.ZERO);
+
+    order.setDiscount(discount);
+
+    // ===== CALCULATE ITEMS =====
+    BigDecimal total = BigDecimal.ZERO;
+    List<OrderItem> items = new ArrayList<>();
+
+    for (OrderItem reqItem : orderRequest.getOrderItems()) {
+
+        Product product = productRepository.findById(reqItem.getProduct().getId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        int qty = reqItem.getQuantity() == null || reqItem.getQuantity() <= 0 ? 1 : reqItem.getQuantity();
+        BigDecimal price = getPriceBySize(product, reqItem.getSize());
+        BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
+
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProduct(product);
+        item.setQuantity(qty);
+        item.setSize(reqItem.getSize());
+        item.setPrice(price);
+        item.setSubtotal(subtotal);
+
+        items.add(item);
+        total = total.add(subtotal);
+    }
+
+    order.setOrderItems(items);
+    order.setTotalAmount(total);
+    order.setFinalAmount(total.subtract(discount));
+
+    // ===== PAYMENT REF (CỰC QUAN TRỌNG) =====
+    order.setPaymentRef("SEPAY-ORDER-" + UUID.randomUUID());
+
+    Order saved = orderRepository.save(order);
+
+    messagingTemplate.convertAndSend("/topic/orders", saved);
+
+    return saved;
+}
+
+@Transactional
+public void markOrderPaidByWebhook(String paymentRef, BigDecimal amount) {
+
+    Order order = orderRepository.findByPaymentRef(paymentRef)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+
+    if (order.getStatus() == OrderStatus.PAID) return;
+
+    if (order.getFinalAmount().compareTo(amount) != 0) {
+        throw new RuntimeException("Amount mismatch");
+    }
+
+    order.setStatus(OrderStatus.PAID);
+    order.setPaidAt(LocalDateTime.now());
+
+    orderRepository.save(order);
+}
 
     /* ==========================================================
        NHÂN VIÊN TẠO ORDER

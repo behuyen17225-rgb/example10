@@ -5,13 +5,11 @@ import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.security.services.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -21,20 +19,12 @@ public class OrderController {
     private final OrderService orderService;
 
     /* =====================================================
-       ADMIN / MODERATOR – LẤY TẤT CẢ ORDER
-       ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
-    @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
-    }
-
-    /* =====================================================
        USER / ADMIN – TẠO ORDER
        ===================================================== */
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping
-    public ResponseEntity<?> createOrder(@RequestBody Order order) {
+    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
+
         String username = SecurityContextHolder
                 .getContext()
                 .getAuthentication()
@@ -45,29 +35,70 @@ public class OrderController {
     }
 
     /* =====================================================
-       USER – LẤY ĐƠN HÀNG CỦA CHÍNH MÌNH
+       USER / ADMIN – XEM TẤT CẢ ĐƠN CỦA CHÍNH MÌNH
        ===================================================== */
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping("/my")
     public ResponseEntity<List<Order>> getMyOrders() {
+
         String username = SecurityContextHolder
                 .getContext()
                 .getAuthentication()
                 .getName();
 
-        return ResponseEntity.ok(orderService.getOrdersByUsername(username));
+        return ResponseEntity.ok(
+                orderService.getOrdersByUsername(username)
+        );
+    }
+
+    /* =====================================================
+       USER / ADMIN – XEM CHI TIẾT 1 ĐƠN CỦA CHÍNH MÌNH
+       ===================================================== */
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @GetMapping("/my/{orderId}")
+    public ResponseEntity<Order> getMyOrderDetail(
+            @PathVariable Long orderId
+    ) {
+
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Order order = orderService.getOrderById(orderId);
+
+        // 🔐 BẢO MẬT: chỉ xem đơn của mình
+        if (!order.getUser().getUsername().equals(username)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(order);
+    }
+
+    /* =====================================================
+       ADMIN / MODERATOR – XEM TẤT CẢ ORDER
+       ===================================================== */
+    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
+    @GetMapping
+    public ResponseEntity<List<Order>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrders());
     }
 
     /* =====================================================
        ADMIN / MODERATOR – UPDATE STATUS
        ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateStatus(
+    public ResponseEntity<Order> updateStatus(
             @PathVariable Long id,
             @RequestParam String status
     ) {
-        OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
-        return ResponseEntity.ok(orderService.updateOrderStatus(id, newStatus));
+
+        OrderStatus newStatus =
+                OrderStatus.valueOf(status.toUpperCase());
+
+        return ResponseEntity.ok(
+                orderService.updateOrderStatus(id, newStatus)
+        );
     }
 }
