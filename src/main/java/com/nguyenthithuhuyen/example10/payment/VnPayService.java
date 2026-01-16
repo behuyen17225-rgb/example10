@@ -50,61 +50,50 @@ public String createPaymentUrl(Order order, String ipAddr) {
     params.put("vnp_CreateDate",
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
-    // ⚠️ BẮT BUỘC CÓ
-    params.put("vnp_SecureHashType", "HmacSHA512");
-
     // ===== SORT =====
     List<String> keys = new ArrayList<>(params.keySet());
     Collections.sort(keys);
 
-    StringBuilder hashData = new StringBuilder();
-    StringBuilder query = new StringBuilder();
+    StringBuilder queryAndHash = new StringBuilder();
 
     for (String key : keys) {
         String value = params.get(key);
         if (value != null && !value.isEmpty()) {
-
-            String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
-
-            hashData.append(key)
+            queryAndHash.append(key)
                     .append("=")
-                    .append(encodedValue)
-                    .append("&");
-
-            query.append(key)
-                    .append("=")
-                    .append(encodedValue)
+                    .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
                     .append("&");
         }
     }
 
-    hashData.setLength(hashData.length() - 1);
-    query.setLength(query.length() - 1);
+    queryAndHash.setLength(queryAndHash.length() - 1);
 
-    String secureHash = hmacSHA512(hashSecret.trim(), hashData.toString());
+    String secureHash = hmacSHA512(hashSecret.trim(), queryAndHash.toString());
 
     return payUrl
             + "?"
-            + query
+            + queryAndHash
             + "&vnp_SecureHash="
             + secureHash;
 }
-    public boolean verifyCallback(Map<String, String> params) {
+
+public boolean verifyCallback(Map<String, String> params) {
 
     String receivedHash = params.get("vnp_SecureHash");
 
-    // REMOVE HASH PARAMS
     Map<String, String> filtered = new TreeMap<>();
+
     for (Map.Entry<String, String> entry : params.entrySet()) {
         if (!entry.getKey().equals("vnp_SecureHash")
                 && !entry.getKey().equals("vnp_SecureHashType")
                 && entry.getValue() != null
                 && !entry.getValue().isEmpty()) {
-            filtered.put(entry.getKey(), entry.getValue());
+
+            filtered.put(entry.getKey(),
+                    URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
         }
     }
 
-    // BUILD HASH DATA
     StringBuilder hashData = new StringBuilder();
     for (Map.Entry<String, String> entry : filtered.entrySet()) {
         hashData.append(entry.getKey())
@@ -112,13 +101,13 @@ public String createPaymentUrl(Order order, String ipAddr) {
                 .append(entry.getValue())
                 .append("&");
     }
+
     hashData.setLength(hashData.length() - 1);
 
-    String calculatedHash = hmacSHA512(hashSecret, hashData.toString());
+    String calculatedHash = hmacSHA512(hashSecret.trim(), hashData.toString());
 
     return calculatedHash.equalsIgnoreCase(receivedHash);
 }
-
     private String hmacSHA512(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
