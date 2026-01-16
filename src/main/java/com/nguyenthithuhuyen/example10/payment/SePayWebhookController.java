@@ -26,6 +26,19 @@ public class SePayWebhookController {
         return ResponseEntity.ok("Received");
     }
 
+    // 🔍 DEBUG endpoint - log tất cả fields
+    @PostMapping("/webhook/debug")
+    public ResponseEntity<String> sepayWebhookDebug(@RequestBody SePayWebhookRequest req) {
+        log.info("📋 WEBHOOK DEBUG - All fields:");
+        log.info("  - description: {}", req.getDescription());
+        log.info("  - amount: {}", req.getAmount());
+        log.info("  - transaction_id: {}", req.getTransaction_id());
+        log.info("  - bank: {}", req.getBank());
+        log.info("  - status: {}", req.getStatus());
+        log.info("  - reference_code: {}", req.getReference_code());
+        return ResponseEntity.ok("Debug logged");
+    }
+
     @PostMapping("/webhook")
     public ResponseEntity<String> sepayWebhook(
             @RequestBody SePayWebhookRequest req) {
