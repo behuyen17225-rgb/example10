@@ -2,7 +2,6 @@ package com.nguyenthithuhuyen.example10.security.services;
 
 import com.nguyenthithuhuyen.example10.entity.*;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
-import com.nguyenthithuhuyen.example10.entity.enums.Status;
 import com.nguyenthithuhuyen.example10.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -15,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 @Service
@@ -172,23 +170,15 @@ private BigDecimal resolvePrice(Product product, String size) {
 @Transactional
 public void markOrderPaidByWebhook(String content, BigDecimal amount) {
 
-    log.info("SePay webhook received: content={}, amount={}", content, amount);
+    log.debug("SePay webhook received: content={}, amount={}", content, amount);
 
-    // 1️⃣ Tách ORDER_ID từ content (format: ORDER_123)
-    Pattern pattern = Pattern.compile("ORDER_(\\d+)");
+    // 1️⃣ Tách ORDER_ID từ content (format: ORDER_123 hoặc ORDER23)
+    // Accept both: ORDER_123 or ORDER123
+    Pattern pattern = Pattern.compile("ORDER[_]?(\\d+)");
     Matcher matcher = pattern.matcher(content);
 
     if (!matcher.find()) {
-        log.error("❌ CANNOT PARSE! Pattern mismatch. Content: '{}' does not match 'ORDER_X'", content);
-        log.error("   - Trying alternative formats...");
-        
-        // Try other formats
-        Pattern altPattern1 = Pattern.compile("(\\d+)");
-        Matcher altMatcher1 = altPattern1.matcher(content);
-        if (altMatcher1.find()) {
-            log.warn("   - Found number: {}", altMatcher1.group(1));
-        }
-        
+        log.error("❌ CANNOT PARSE! Content format invalid: '{}'. Expected ORDER123 or ORDER_123", content);
         throw new RuntimeException("Invalid payment content format. Expected ORDER_ID, got: " + content);
     }
 
@@ -197,38 +187,40 @@ public void markOrderPaidByWebhook(String content, BigDecimal amount) {
 
     // 2️⃣ Tìm order
     Order order = orderRepository.findById(orderId)
-            .orElseThrow(() ->
-                    new RuntimeException("Order not found: " + orderId)
-            );
+            .orElseThrow(() -> {
+                log.error("❌ Order not found: {}", orderId);
+                return new RuntimeException("Order not found: " + orderId);
+            });
 
-    // 3️⃣ Check trùng
+    // 3️⃣ Check đã thanh toán chưa
     if (order.getStatus() == OrderStatus.PAID) {
-        log.warn("Order {} already PAID", orderId);
+        log.warn("⚠️ Order {} already PAID - ignoring duplicate webhook", orderId);
         return;
     }
 
-    // 4️⃣ Check số tiền (so sánh BigDecimal, cho phép sai khác nhỏ hoặc log warning)
-    BigDecimal orderAmount = order.getFinalAmount();
-    log.info("Amount comparison: webhook={}, order={}", amount, orderAmount);
-    
-    if (amount.compareTo(orderAmount) != 0) {
-        log.warn("⚠️ Amount mismatch but still marking as PAID. webhook={}, order={}", amount, orderAmount);
+    // 4️⃣ Check số tiền (nếu SePay gửi amount)
+    if (amount != null) {
+        BigDecimal orderAmount = order.getFinalAmount();
+        log.debug("Amount comparison: webhook={}, order={}", amount, orderAmount);
+        
+        if (amount.compareTo(orderAmount) != 0) {
+            log.warn("⚠️ Amount mismatch! webhook={}, order={} - but still marking as PAID", amount, orderAmount);
+        }
+    } else {
+        log.debug("⚠️ SePay did not send amount - skipping amount verification");
     }
 
-    // 5️⃣ Update
+    // 5️⃣ Update order status
     order.setStatus(OrderStatus.PAID);
     order.setPaidAt(LocalDateTime.now());
-
     orderRepository.save(order);
+    
+    log.info("✅ Order {} marked as PAID successfully", orderId);
 
-    log.info("Order {} marked as PAID", orderId);
+    log.debug("Order {} marked as PAID", orderId);
 }
 
 
-
-    /* ==========================================================
-       NHÂN VIÊN TẠO ORDER
-       ========================================================== */
     @Transactional
     public Order staffCreateOrder(Order orderRequest, String staffUsername) {
         return createOrder(orderRequest, staffUsername);
@@ -246,22 +238,6 @@ public void markOrderPaidByWebhook(String content, BigDecimal amount) {
 
         order.setStatus(status);
         return orderRepository.save(order);
-    }
-
-    /* ==========================================================
-       LẤY GIÁ THEO SIZE
-       ========================================================== */
-    private BigDecimal getPriceBySize(Product product, String size) {
-
-        if (size == null || size.isBlank())
-            throw new RuntimeException("Size is required");
-
-        return product.getPrices().stream()
-                .filter(p -> p.getSize().equalsIgnoreCase(size))
-                .findFirst()
-                .orElseThrow(() ->
-                        new RuntimeException("Price not found for size: " + size))
-                .getPrice();
     }
 
     /* ==========================================================

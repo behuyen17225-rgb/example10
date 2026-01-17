@@ -36,6 +36,7 @@ public class OrderItem {
 
     /* ================= QUANTITY ================= */
     @Column(nullable = false)
+    @Builder.Default
     private Integer quantity = 1;
 
     /* ================= UNIT PRICE ================= */
@@ -44,6 +45,7 @@ public class OrderItem {
 
     /* ================= SUBTOTAL ================= */
     @Column(nullable = false, precision = 10, scale = 2)
+    @Builder.Default
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     /* ================= AUDIT ================= */

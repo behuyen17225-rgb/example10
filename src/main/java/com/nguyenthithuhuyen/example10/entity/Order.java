@@ -43,12 +43,15 @@ public class Order {
 
     /* ================= MONEY ================= */
     @Column(name = "total_amount", precision = 10, scale = 2, nullable = false)
+    @Builder.Default
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Column(precision = 10, scale = 2, nullable = false)
+    @Builder.Default
     private BigDecimal discount = BigDecimal.ZERO;
 
     @Column(name = "final_amount", precision = 10, scale = 2, nullable = false)
+    @Builder.Default
     private BigDecimal finalAmount = BigDecimal.ZERO;
 
     /* ================= CUSTOMER INFO ================= */
@@ -88,6 +91,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     @ToString.Exclude
+    @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
 
     /* ================= TIME ================= */

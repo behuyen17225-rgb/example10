@@ -47,6 +47,7 @@ public class Category {
     // ===== CHILDREN =====
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     @JsonManagedReference   // 🔥 CHO PHÉP 1 CHIỀU
+    @Builder.Default
     private List<Category> children = new ArrayList<>();
 
     // ===== PRODUCTS =====

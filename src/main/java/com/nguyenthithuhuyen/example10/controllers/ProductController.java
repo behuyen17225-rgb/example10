@@ -1,26 +1,19 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
-import com.nguyenthithuhuyen.example10.dto.CategoryDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductResponseDto;
-import com.nguyenthithuhuyen.example10.dto.ProductWithPromotionsDTO;
 import com.nguyenthithuhuyen.example10.entity.Category;
 import com.nguyenthithuhuyen.example10.entity.Product;
 import com.nguyenthithuhuyen.example10.repository.CategoryRepository;
 import com.nguyenthithuhuyen.example10.security.services.ProductService;
-import com.nguyenthithuhuyen.example10.security.services.impl.ProductServiceImpl;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
 import com.nguyenthithuhuyen.example10.mapper.ProductMapper;
 import com.nguyenthithuhuyen.example10.dto.ProductRequest;
 import com.nguyenthithuhuyen.example10.entity.ProductPrice;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor

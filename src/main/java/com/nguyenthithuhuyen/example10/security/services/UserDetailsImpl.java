@@ -2,7 +2,6 @@ package com.nguyenthithuhuyen.example10.security.services;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nguyenthithuhuyen.example10.entity.User;
-import com.nguyenthithuhuyen.example10.model.Role;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

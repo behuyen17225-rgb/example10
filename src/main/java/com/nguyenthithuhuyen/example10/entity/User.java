@@ -32,9 +32,12 @@ public class User {
 
     private String phone;
     private String imageUrl;
+    @Builder.Default
     private Boolean isActive = true;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     // ManyToMany User - Role
     @ManyToMany(fetch = FetchType.EAGER)
@@ -43,5 +46,6 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @Builder.Default
     private Set<Role> roles = new HashSet<>();
 }

@@ -41,16 +41,20 @@ public class GeminiService {
             new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> res =
-                restTemplate.postForEntity(url, entity, Map.class);
+            @SuppressWarnings("unchecked")
+            ResponseEntity<Map<String, Object>> res =
+                (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) restTemplate.postForEntity(url, entity, Map.class);
 
+            @SuppressWarnings("unchecked")
             Map<String, Object> candidate =
                 ((List<Map<String, Object>>) res.getBody()
                     .get("candidates")).get(0);
 
+            @SuppressWarnings("unchecked")
             Map<String, Object> content =
                 (Map<String, Object>) candidate.get("content");
 
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> parts =
                 (List<Map<String, Object>>) content.get("parts");
 
@@ -94,7 +98,9 @@ public class GeminiService {
             String json =
                 text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
 
-            return objectMapper.readValue(json, Map.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = objectMapper.readValue(json, Map.class);
+            return result;
         } catch (Exception e) {
             return Map.of("intent", "UNKNOWN");
         }

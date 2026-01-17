@@ -22,14 +22,17 @@ public class TableEntity {
     private Integer number;
 
     @Column(nullable = false)
+    @Builder.Default
     private Integer capacity = 4;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private Status status = Status.FREE;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;

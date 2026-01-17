@@ -2,7 +2,6 @@ package com.nguyenthithuhuyen.example10.payment;
 
 import com.nguyenthithuhuyen.example10.entity.Order;
 import com.nguyenthithuhuyen.example10.payload.response.QrResponse;
-import com.nguyenthithuhuyen.example10.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +18,6 @@ public class SePayService {
     private static final Logger log =
             LoggerFactory.getLogger(SePayService.class);
 
-    private final OrderRepository orderRepository;
-
     @Value("${sepay.bank-code}")
     private String bankCode;          // TPB
 
@@ -32,10 +29,10 @@ public class SePayService {
 
     public QrResponse createQr(Order order) {
 
-        log.info("===== CREATE VIETQR =====");
-        log.info("Order ID      : {}", order.getId());
-        log.info("Final amount  : {}", order.getFinalAmount());
-        log.info("Payment ref   : {}", order.getPaymentRef());
+        log.debug("===== CREATE VIETQR =====");
+        log.debug("Order ID      : {}", order.getId());
+        log.debug("Final amount  : {}", order.getFinalAmount());
+        log.debug("Payment ref   : {}", order.getPaymentRef());
 
         // ===== VALIDATE =====
         if (order.getFinalAmount() == null) {
@@ -59,7 +56,7 @@ public class SePayService {
             throw new RuntimeException("Payment ref must be set before creating QR");
         }
 
-        log.info("Using paymentRef: {}", order.getPaymentRef());
+        log.debug("Using paymentRef: {}", order.getPaymentRef());
 
         String encodedName =
                 URLEncoder.encode(accountName, StandardCharsets.UTF_8);
@@ -71,8 +68,8 @@ public class SePayService {
                         + "&addInfo=" + order.getPaymentRef()
                         + "&accountName=" + encodedName;
 
-        log.info("VietQR URL: {}", qrUrl);
-        log.info("===== END CREATE VIETQR =====");
+        log.debug("VietQR URL: {}", qrUrl);
+        log.debug("===== END CREATE VIETQR =====");
 
         return new QrResponse(
                 qrUrl,

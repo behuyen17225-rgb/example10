@@ -33,12 +33,14 @@ public class Bill {
     private TableEntity table;
     
     @Column(nullable = false, precision = 10, scale = 2)
+    @Builder.Default
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     private LocalDateTime issuedAt;

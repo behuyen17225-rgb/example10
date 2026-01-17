@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -41,6 +40,7 @@ public class Product {
     /* ================= IMAGE / STOCK ================= */
     private String imageUrl;
     private Integer stockQuantity;
+    @Builder.Default
     private Boolean isActive = true;
 
     /* ================= PRICES (SIZE) ================= */

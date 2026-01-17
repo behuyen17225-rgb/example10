@@ -2,7 +2,6 @@ package com.nguyenthithuhuyen.example10.mapper;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
 import com.nguyenthithuhuyen.example10.dto.CategoryDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductPriceDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductResponseDto;
