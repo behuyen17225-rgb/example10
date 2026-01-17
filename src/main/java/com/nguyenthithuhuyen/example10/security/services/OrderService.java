@@ -263,9 +263,10 @@ public void markOrderPaidByWebhook(String content, BigDecimal amount) {
     public List<Map<String, Object>> getRevenueByCategory() {
         return orderRepository.findRevenueByCategory(OrderStatus.PAID);
     }
+    @Transactional
     public List<Order> getOrdersByUsername(String username) {
-    return orderRepository.findByUser_Username(username);
-}
+        return orderRepository.findByUser_Username(username);
+    }
 
 
     public List<Map<String, Object>> getRevenueByDay() {
