@@ -71,10 +71,6 @@ if (orderRequest.getTable() != null && orderRequest.getTable().getId() != null) 
 
     order.setPaymentMethod(paymentMethod);
 
-    // ===== TABLE =====
-    if (orderRequest.getTable() != null) {
-        order.setTable(orderRequest.getTable());
-    }
 
     // ===== CUSTOMER INFO =====
     order.setCustomerName(

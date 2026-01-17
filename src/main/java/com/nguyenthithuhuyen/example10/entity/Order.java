@@ -34,6 +34,7 @@ public class Order {
     /* ================= TABLE ================= */
 @ManyToOne(fetch = FetchType.LAZY)
 @JoinColumn(name = "table_id")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 private TableEntity table;
     /* ================= STATUS ================= */
     @Enumerated(EnumType.STRING)
