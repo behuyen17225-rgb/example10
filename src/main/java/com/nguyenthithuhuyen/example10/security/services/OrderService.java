@@ -40,7 +40,15 @@ public Order createOrder(Order orderRequest, String username) {
 
     if (orderRequest.getOrderItems() == null || orderRequest.getOrderItems().isEmpty()) {
         throw new RuntimeException("Order must contain items");
-    }
+    }// ===== TABLE (FIX) =====
+if (orderRequest.getTable() != null && orderRequest.getTable().getId() != null) {
+    Table table = tableRepository.findById(orderRequest.getTable().getId())
+            .orElseThrow(() -> new RuntimeException("Table not found"));
+    order.setTable(table);
+} else {
+    throw new RuntimeException("Table is required");
+}
+
 
     Order order = new Order();
     order.setUser(user);
@@ -147,6 +155,8 @@ public Order createOrder(Order orderRequest, String username) {
 
     return saved;
 }
+
+
 
 private BigDecimal resolvePrice(Product product, String size) {
 
