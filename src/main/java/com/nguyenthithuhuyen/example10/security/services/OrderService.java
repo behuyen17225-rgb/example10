@@ -27,6 +27,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TableRepository tableRepository;
 
     /* ==========================================================
        KHÁCH TẠO ORDER (CHECKOUT)
@@ -40,17 +41,20 @@ public Order createOrder(Order orderRequest, String username) {
 
     if (orderRequest.getOrderItems() == null || orderRequest.getOrderItems().isEmpty()) {
         throw new RuntimeException("Order must contain items");
-    }// ===== TABLE (FIX) =====
-if (orderRequest.getTable() != null && orderRequest.getTable().getId() != null) {
-    Table table = tableRepository.findById(orderRequest.getTable().getId())
-            .orElseThrow(() -> new RuntimeException("Table not found"));
-    order.setTable(table);
-} else {
-    throw new RuntimeException("Table is required");
-}
+    }
 
 
     Order order = new Order();
+       // ===== TABLE (FIX) =====
+if (orderRequest.getTable() != null && orderRequest.getTable().getId() != null) {
+    TableEntity table = tableRepository.findById(orderRequest.getTable().getId())
+            .orElseThrow(() -> new RuntimeException("Table not found"));
+    order.setTable(table);
+} 
+ else {
+    throw new RuntimeException("Table is required");
+}
+
     order.setUser(user);
 
     // ===== STATUS =====
