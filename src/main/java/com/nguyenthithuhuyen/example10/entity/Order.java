@@ -32,11 +32,9 @@ public class Order {
     private User user;
 
     /* ================= TABLE ================= */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "table_id")
-    @JsonIgnore
-    private TableEntity table;
-
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "table_id")
+private TableEntity table;
     /* ================= STATUS ================= */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
