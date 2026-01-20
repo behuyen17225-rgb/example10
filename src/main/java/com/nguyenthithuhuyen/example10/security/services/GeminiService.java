@@ -66,6 +66,31 @@ public class GeminiService {
         }
     }
 
+    /* ================= GỌI GEMINI – GENERAL AI CHAT ================= */
+    public String askGeminiGeneral(String userMessage, String conversationHistory) {
+
+        String systemPrompt = """
+        Bạn là một trợ lý AI thân thiện cho quán bánh. 
+        Bạn có thể:
+        - Giới thiệu sản phẩm bánh
+        - Trả lời câu hỏi về đặt hàng
+        - Giúp khách hàng tìm bánh phù hợp
+        - Trò chuyện thân thiện và hỗ trợ khách hàng
+        
+        Hãy trả lời ngắn gọn, thân thiện, bằng tiếng Việt.
+        """;
+
+        String prompt = systemPrompt;
+        
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            prompt += "\n\nLịch sử trò chuyện:\n" + conversationHistory;
+        }
+        
+        prompt += "\n\nKhách hàng: " + userMessage + "\nBạn:";
+
+        return askGemini(prompt);
+    }
+
     /* ================= GỌI GEMINI – INTENT ================= */
     public Map<String, Object> askGeminiForIntent(String userMessage) {
 
