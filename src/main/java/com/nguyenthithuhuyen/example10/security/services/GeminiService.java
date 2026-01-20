@@ -97,17 +97,28 @@ public class GeminiService {
         String systemPrompt = """
         Bạn là trợ lý AI cho quán bánh.
         Phân tích câu người dùng và trả về JSON duy nhất.
+        
+        RULES:
+        - Nếu user chỉ chào hỏi (hi, hello, xin chào, etc.) => intent: "UNKNOWN"
+        - Nếu user hỏi về sản phẩm/tìm bánh => intent: "SHOW_PRODUCTS" (nếu không có filter giá)
+        - Nếu user hỏi với điều kiện giá => intent: "FILTER_PRICE"
+        - Nếu user track đơn hàng => intent: "TRACK_ORDER"
+        - Các câu hỏi khác => intent: "UNKNOWN"
+        - KHÔNG được gán SHOW_PRODUCTS nếu không có keyword hoặc maxPrice
 
         FORMAT:
         {
-          "intent": "SHOW_PRODUCTS | FILTER_PRICE | FILTER_FLAVOR | TRACK_ORDER",
-          "keyword": "",
-          "maxPrice": number | null
+          "intent": "SHOW_PRODUCTS | FILTER_PRICE | TRACK_ORDER | UNKNOWN",
+          "keyword": null hoặc string,
+          "maxPrice": null hoặc number
         }
 
         Ví dụ:
-        bánh socola dưới 100k
-        => {"intent":"FILTER_PRICE","keyword":"socola","maxPrice":100000}
+        "hi" => {"intent":"UNKNOWN","keyword":null,"maxPrice":null}
+        "bánh gì có" => {"intent":"UNKNOWN","keyword":null,"maxPrice":null}
+        "bánh socola" => {"intent":"SHOW_PRODUCTS","keyword":"socola","maxPrice":null}
+        "bánh socola dưới 100k" => {"intent":"FILTER_PRICE","keyword":"socola","maxPrice":100000}
+        "track đơn ABC123" => {"intent":"TRACK_ORDER","keyword":"ABC123","maxPrice":null}
         """;
 
         String finalPrompt = systemPrompt + "\nUser: " + userMessage;

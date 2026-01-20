@@ -49,13 +49,19 @@ public class ChatService {
         BigDecimal maxPrice = null;
 
         if (ai.get("maxPrice") != null) {
-            maxPrice = new BigDecimal(ai.get("maxPrice").toString());
+            try {
+                maxPrice = new BigDecimal(ai.get("maxPrice").toString());
+            } catch (Exception e) {
+                maxPrice = null;
+            }
         }
 
         ChatResponse response = null;
 
         /* ===== SHOW / FILTER PRODUCTS ===== */
-        if (intent.equals("SHOW_PRODUCTS") || intent.equals("FILTER_PRICE")) {
+        // Chỉ search sản phẩm nếu có keyword hoặc maxPrice được xác định
+        if ((intent.equals("SHOW_PRODUCTS") || intent.equals("FILTER_PRICE")) 
+            && (keyword != null || maxPrice != null)) {
 
             List<ProductResponseDto> products =
                 productRepo.searchByChat(
@@ -89,7 +95,7 @@ public class ChatService {
         }
         /* ===== GENERAL AI CHAT ===== */
         else {
-            // Gọi AI để trả lời câu hỏi chung
+            // Gọi AI để trả lời câu hỏi chung (cho tất cả trường hợp khác, bao gồm UNKNOWN)
             String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
             response = ChatResponse.text(aiAnswer);
             response.setMessageType("TEXT");
