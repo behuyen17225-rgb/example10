@@ -52,6 +52,12 @@ public class ChatService {
         // Nếu KHÔNG liên quan đến sản phẩm/đơn hàng → trả lời thân thiện
         if (!isProductOrOrderRelated) {
             String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
+            
+            // Nếu Gemini error, trả lời fallback thân thiện
+            if (aiAnswer.contains("Gemini error")) {
+                aiAnswer = "Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊";
+            }
+            
             response = ChatResponse.text(aiAnswer);
             response.setMessageType("TEXT");
         } 
@@ -107,6 +113,12 @@ public class ChatService {
             /* ===== DEFAULT: General AI Chat ===== */
             else {
                 String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
+                
+                // Nếu Gemini error, trả lời fallback
+                if (aiAnswer.contains("Gemini error")) {
+                    aiAnswer = "Em xin lỗi, tại thời điểm này em không thể trả lời. Vui lòng liên hệ với nhân viên! 📞";
+                }
+                
                 response = ChatResponse.text(aiAnswer);
                 response.setMessageType("TEXT");
             }

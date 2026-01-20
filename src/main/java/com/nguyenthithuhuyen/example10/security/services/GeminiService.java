@@ -61,6 +61,7 @@ public class GeminiService {
             return parts.get(0).get("text").toString();
 
         } catch (Exception e) {
+            System.err.println("❌ Gemini API Error: " + e.getMessage());
             e.printStackTrace();
             return "Gemini error";
         }
@@ -142,39 +143,49 @@ public class GeminiService {
         }
     }
 
-    /* ================= DETECT: Product or Order Related ================= */
+    /* ================= DETECT: Product or Order Related (Simple Keyword Check) ================= */
     /**
      * Kiểm tra xem câu hỏi có liên quan đến sản phẩm hoặc đơn hàng không
-     * Trả về true nếu có, false nếu chỉ là chat chung
+     * Dùng keyword matching thay vì gọi Gemini để tránh API overhead
      */
     public boolean isProductOrOrderRelated(String userMessage) {
-        String systemPrompt = """
-        Bạn là AI phân tích. Hãy kiểm tra câu user có liên quan đến:
-        - Sản phẩm bánh (tìm kiếm, giá, loại, hương vị, v.v...)
-        - Đơn hàng (tracking, tình trạng, giao hàng)
-        
-        Trả về JSON:
-        {"related": true hoặc false}
-        
-        Ví dụ:
-        "hi" => {"related":false}
-        "bánh gì ngon?" => {"related":true}
-        "xôi lên" => {"related":false}
-        "bánh nào dưới 100k?" => {"related":true}
-        "kiểm tra đơn hàng" => {"related":true}
-        """;
-
-        String finalPrompt = systemPrompt + "\nUser: " + userMessage;
-        String raw = askGemini(finalPrompt);
-
-        try {
-            String json = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = objectMapper.readValue(json, Map.class);
-            Object related = result.get("related");
-            return related instanceof Boolean ? (Boolean) related : false;
-        } catch (Exception e) {
+        if (userMessage == null || userMessage.trim().isEmpty()) {
             return false;
         }
+
+        String msg = userMessage.toLowerCase();
+
+        // Keywords liên quan đến sản phẩm/bánh
+        String[] productKeywords = {
+            "bánh", "bread", "cake", "product", "sản phẩm", "giá", "price", 
+            "loại", "type", "hương vị", "flavor", "vị", "socola", "chocolate",
+            "trứng", "egg", "cream", "kem", "bơ", "butter", "dâu", "strawberry",
+            "nho", "grape", "matcha", "vanilla", "caramel", "toffee", "mint",
+            "mua", "buy", "order bánh", "gợi ý", "recommend", "suggest",
+            "bao nhiêu", "bao lâu", "mấy", "số", "cái", "chiếc", "hộp"
+        };
+
+        // Keywords liên quan đến đơn hàng
+        String[] orderKeywords = {
+            "đơn hàng", "order", "track", "kiểm tra", "tình trạng", "status",
+            "giao hàng", "delivery", "ship", "mã đơn", "order id", "invoice",
+            "thanh toán", "payment", "trả tiền", "tổng tiền", "bill"
+        };
+
+        // Check product keywords
+        for (String keyword : productKeywords) {
+            if (msg.contains(keyword)) {
+                return true;
+            }
+        }
+
+        // Check order keywords
+        for (String keyword : orderKeywords) {
+            if (msg.contains(keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
