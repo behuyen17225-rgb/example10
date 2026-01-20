@@ -141,4 +141,39 @@ public class GeminiService {
             return Map.of("intent", "UNKNOWN");
         }
     }
-}
+
+    /* ================= DETECT: Product or Order Related ================= */
+    /**
+     * Kiểm tra xem câu hỏi có liên quan đến sản phẩm hoặc đơn hàng không
+     * Trả về true nếu có, false nếu chỉ là chat chung
+     */
+    public boolean isProductOrOrderRelated(String userMessage) {
+        String systemPrompt = """
+        Bạn là AI phân tích. Hãy kiểm tra câu user có liên quan đến:
+        - Sản phẩm bánh (tìm kiếm, giá, loại, hương vị, v.v...)
+        - Đơn hàng (tracking, tình trạng, giao hàng)
+        
+        Trả về JSON:
+        {"related": true hoặc false}
+        
+        Ví dụ:
+        "hi" => {"related":false}
+        "bánh gì ngon?" => {"related":true}
+        "xôi lên" => {"related":false}
+        "bánh nào dưới 100k?" => {"related":true}
+        "kiểm tra đơn hàng" => {"related":true}
+        """;
+
+        String finalPrompt = systemPrompt + "\nUser: " + userMessage;
+        String raw = askGemini(finalPrompt);
+
+        try {
+            String json = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = objectMapper.readValue(json, Map.class);
+            Object related = result.get("related");
+            return related instanceof Boolean ? (Boolean) related : false;
+        } catch (Exception e) {
+            return false;
+        }
+    }

@@ -31,6 +31,9 @@ public class ChatService {
 
     /**
      * Xử lý tin nhắn chat từ user và lưu lịch sử
+     * Logic:
+     * 1. Nếu user hỏi liên quan sản phẩm/đơn hàng (semantic check) → lấy dữ liệu từ DB
+     * 2. Nếu không liên quan → trả lời thân thiện qua Gemini
      */
     public ChatResponse handleChat(String message, Long userId) {
 
@@ -38,67 +41,75 @@ public class ChatService {
         User user = userRepo.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Lấy lịch sử chat gần đây (5 lần gần nhất) để cung cấp context
+        // Lấy lịch sử chat gần đây để cung cấp context
         List<ChatMessage> conversationHistory = chatMessageRepo.findRecentMessages(userId, 5);
         
-        // Gọi AI để xử lý intent
-        Map<String, Object> ai = geminiService.askGeminiForIntent(message);
-        String intent = ai.getOrDefault("intent", "UNKNOWN").toString();
-
-        String keyword = (String) ai.get("keyword");
-        BigDecimal maxPrice = null;
-
-        if (ai.get("maxPrice") != null) {
-            try {
-                maxPrice = new BigDecimal(ai.get("maxPrice").toString());
-            } catch (Exception e) {
-                maxPrice = null;
-            }
-        }
-
+        // Bước 1: Check semantic - câu hỏi có liên quan đến sản phẩm/đơn hàng không?
+        boolean isProductOrOrderRelated = geminiService.isProductOrOrderRelated(message);
+        
         ChatResponse response = null;
 
-        /* ===== SHOW / FILTER PRODUCTS ===== */
-        // Chỉ search sản phẩm nếu có keyword hoặc maxPrice được xác định
-        if ((intent.equals("SHOW_PRODUCTS") || intent.equals("FILTER_PRICE")) 
-            && (keyword != null || maxPrice != null)) {
-
-            List<ProductResponseDto> products =
-                productRepo.searchByChat(
-                        keyword,
-                        maxPrice,
-                        PageRequest.of(0, 5)
-                )
-                .stream()
-                .map(ProductMapper::toResponse)
-                .toList();
-
-            if (products.isEmpty()) {
-                response = ChatResponse.text(
-                    "Dạ hiện chưa có bánh phù hợp mức giá này 😥"
-                );
-                response.setMessageType("TEXT");
-            } else {
-                response = ChatResponse.products(
-                    "Em gợi ý vài mẫu bánh phù hợp cho bạn nè",
-                    products
-                );
-                response.setMessageType("PRODUCT");
-            }
-        }
-        /* ===== TRACK ORDER ===== */
-        else if (intent.equals("TRACK_ORDER")) {
-            response = ChatResponse.text(
-                "Bạn gửi giúp em mã đơn hàng để em kiểm tra nha 📦"
-            );
-            response.setMessageType("TEXT");
-        }
-        /* ===== GENERAL AI CHAT ===== */
-        else {
-            // Gọi AI để trả lời câu hỏi chung (cho tất cả trường hợp khác, bao gồm UNKNOWN)
+        // Nếu KHÔNG liên quan đến sản phẩm/đơn hàng → trả lời thân thiện
+        if (!isProductOrOrderRelated) {
             String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
             response = ChatResponse.text(aiAnswer);
             response.setMessageType("TEXT");
+        } 
+        // Nếu LÓ liên quan → gọi AI để xác định intent cụ thể
+        else {
+            Map<String, Object> ai = geminiService.askGeminiForIntent(message);
+            String intent = ai.getOrDefault("intent", "UNKNOWN").toString();
+
+            String keyword = (String) ai.get("keyword");
+            BigDecimal maxPrice = null;
+
+            if (ai.get("maxPrice") != null) {
+                try {
+                    maxPrice = new BigDecimal(ai.get("maxPrice").toString());
+                } catch (Exception e) {
+                    maxPrice = null;
+                }
+            }
+
+            /* ===== SHOW / FILTER PRODUCTS ===== */
+            if (intent.equals("SHOW_PRODUCTS") || intent.equals("FILTER_PRICE")) {
+
+                List<ProductResponseDto> products =
+                    productRepo.searchByChat(
+                            keyword,
+                            maxPrice,
+                            PageRequest.of(0, 5)
+                    )
+                    .stream()
+                    .map(ProductMapper::toResponse)
+                    .toList();
+
+                if (products.isEmpty()) {
+                    response = ChatResponse.text(
+                        "Dạ hiện chưa có bánh phù hợp mức giá này 😥"
+                    );
+                    response.setMessageType("TEXT");
+                } else {
+                    response = ChatResponse.products(
+                        "Em gợi ý vài mẫu bánh phù hợp cho bạn nè",
+                        products
+                    );
+                    response.setMessageType("PRODUCT");
+                }
+            }
+            /* ===== TRACK ORDER ===== */
+            else if (intent.equals("TRACK_ORDER")) {
+                response = ChatResponse.text(
+                    "Bạn gửi giúp em mã đơn hàng để em kiểm tra nha 📦"
+                );
+                response.setMessageType("TEXT");
+            }
+            /* ===== DEFAULT: General AI Chat ===== */
+            else {
+                String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
+                response = ChatResponse.text(aiAnswer);
+                response.setMessageType("TEXT");
+            }
         }
 
         // Lưu chat message vào DB
