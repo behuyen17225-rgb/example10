@@ -177,3 +177,4 @@ public class GeminiService {
             return false;
         }
     }
+}
