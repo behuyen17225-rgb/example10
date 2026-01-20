@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GeminiService {
@@ -16,9 +18,19 @@ public class GeminiService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    // Simple cache để tránh gọi Gemini quá nhiều lần cho cùng prompt
+    private final Map<String, String> responseCache = new ConcurrentHashMap<>();
+    private static final int CACHE_SIZE_LIMIT = 50;
 
-    /* ================= GỌI GEMINI – TEXT ================= */
+    /* ================= GỌI GEMINI – TEXT (WITH CACHING) ================= */
     public String askGemini(String prompt) {
+        // Kiểm tra cache trước
+        String cacheKey = "gemini:" + prompt.hashCode();
+        if (responseCache.containsKey(cacheKey)) {
+            System.out.println("✅ Cache HIT: " + cacheKey);
+            return responseCache.get(cacheKey);
+        }
 
         String url =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
@@ -58,12 +70,23 @@ public class GeminiService {
             List<Map<String, Object>> parts =
                 (List<Map<String, Object>>) content.get("parts");
 
-            return parts.get(0).get("text").toString();
+            String result = parts.get(0).get("text").toString();
+            
+            // Lưu vào cache
+            if (responseCache.size() >= CACHE_SIZE_LIMIT) {
+                responseCache.clear(); // Clear khi vượt limit
+            }
+            responseCache.put(cacheKey, result);
+            
+            return result;
 
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            System.err.println("❌ Gemini API Quota Exceeded (429): " + e.getMessage());
+            return "QUOTA_EXCEEDED";
+            
         } catch (Exception e) {
             System.err.println("❌ Gemini API Error: " + e.getMessage());
-            e.printStackTrace();
-            return "Gemini error";
+            return "GEMINI_ERROR";
         }
     }
 

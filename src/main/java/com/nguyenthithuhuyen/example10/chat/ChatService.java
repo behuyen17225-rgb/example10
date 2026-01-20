@@ -54,8 +54,8 @@ public class ChatService {
             String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
             
             // Nếu Gemini error, trả lời fallback thân thiện
-            if (aiAnswer.contains("Gemini error")) {
-                aiAnswer = "Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊";
+            if (aiAnswer.contains("QUOTA_EXCEEDED") || aiAnswer.contains("GEMINI_ERROR")) {
+                aiAnswer = "Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊\n(Hệ thống AI đang overload)";
             }
             
             response = ChatResponse.text(aiAnswer);
@@ -115,8 +115,8 @@ public class ChatService {
                 String aiAnswer = geminiService.askGeminiGeneral(message, convertToString(conversationHistory));
                 
                 // Nếu Gemini error, trả lời fallback
-                if (aiAnswer.contains("Gemini error")) {
-                    aiAnswer = "Em xin lỗi, tại thời điểm này em không thể trả lời. Vui lòng liên hệ với nhân viên! 📞";
+                if (aiAnswer.contains("QUOTA_EXCEEDED") || aiAnswer.contains("GEMINI_ERROR")) {
+                    aiAnswer = "Em xin lỗi, tại thời điểm này em không thể trả lời. Vui lòng liên hệ với nhân viên! 📞\n(Hệ thống AI đang overload)";
                 }
                 
                 response = ChatResponse.text(aiAnswer);
