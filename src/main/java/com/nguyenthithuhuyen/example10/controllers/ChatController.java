@@ -36,31 +36,7 @@ public class ChatController {
     /**
      * Lấy lịch sử chat của user
      */
-    @GetMapping("/history/{userId}")
-    public ResponseEntity<List<ChatMessageDto>> getChatHistory(@PathVariable Long userId) {
-        List<ChatMessage> messages = chatService.getChatHistory(userId);
-        
-        List<ChatMessageDto> dtos = messages.stream()
-            .map(msg -> new ChatMessageDto(
-                msg.getId(),
-                msg.getUserMessage(),
-                msg.getAiResponse(),
-                msg.getMessageType(),
-                msg.getCreatedAt()
-            ))
-            .collect(Collectors.toList());
-        
-        return ResponseEntity.ok(dtos);
-    }
 
-    /**
-     * Xóa toàn bộ lịch sử chat của user
-     */
-    @DeleteMapping("/history/{userId}")
-    public ResponseEntity<String> clearChatHistory(@PathVariable Long userId) {
-        chatService.clearChatHistory(userId);
-        return ResponseEntity.ok("Chat history cleared successfully");
-    }
 
     /**
      * Endpoint cũ - giữ lại để compatibility (sử dụng userId = 1)

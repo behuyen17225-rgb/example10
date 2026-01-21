@@ -51,4 +51,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Tìm kiếm sản phẩm theo tên (cho Nhân viên/Khách hàng tìm kiếm)
     List<Product> findByNameContainingIgnoreCaseAndIsActiveTrue(String name);
+    @Query("""
+SELECT p FROM Product p
+JOIN p.category c
+WHERE (:keyword IS NULL OR LOWER(c.name) LIKE %:keyword% OR LOWER(p.name) LIKE %:keyword%)
+AND (:minPrice IS NULL OR p.minPrice >= :minPrice)
+AND (:maxPrice IS NULL OR p.minPrice <= :maxPrice)
+AND p.isActive = true
+""")
+List<Product> filterProducts(
+    String keyword,
+    BigDecimal minPrice,
+    BigDecimal maxPrice
+);
+
 }

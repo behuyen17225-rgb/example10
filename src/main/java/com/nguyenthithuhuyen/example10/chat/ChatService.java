@@ -9,425 +9,172 @@ import com.nguyenthithuhuyen.example10.repository.ChatMessageRepository;
 import com.nguyenthithuhuyen.example10.repository.ProductRepository;
 import com.nguyenthithuhuyen.example10.repository.UserRepository;
 import com.nguyenthithuhuyen.example10.security.services.GeminiService;
-
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class ChatService {
 
-    private final GeminiService geminiService;
     private final ProductRepository productRepo;
     private final ChatMessageRepository chatMessageRepo;
     private final UserRepository userRepo;
+    private final GeminiService geminiService; // CHỈ dùng cho chat thường
 
-    /**
-     * Xử lý tin nhắn chat từ user và lưu lịch sử
-     * Logic:
-     * 1. Nếu user hỏi liên quan sản phẩm/đơn hàng (semantic check) → lấy dữ liệu từ DB
-     * 2. Nếu không liên quan → trả lời thân thiện qua Gemini
-     */
+    // ===== HANDLE CHAT =====
     public ChatResponse handleChat(String message, Long userId) {
 
-        // Lấy user từ DB
         User user = userRepo.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Lấy lịch sử chat gần đây để cung cấp context
-        List<ChatMessage> conversationHistory = chatMessageRepo.findRecentMessages(userId, 5);
-        
-        ChatResponse response = null;
+        ChatResponse response;
 
         try {
-            // Bước 1: Phân tích intent bằng keyword matching (KHÔNG gọi Gemini)
             String lowerMsg = message.toLowerCase();
-            String intent = "UNKNOWN";
-            String keyword = null;
-            BigDecimal maxPrice = null;
 
-            // ===== DETECT INTENT =====
-            if (lowerMsg.contains("track") || lowerMsg.contains("đơn hàng") || 
-                lowerMsg.contains("kiểm tra") || lowerMsg.contains("order") ||
-                lowerMsg.contains("mã đơn")) {
-                intent = "TRACK_ORDER";
-            }
-            else if (lowerMsg.contains("dưới") || lowerMsg.contains("limit") || 
-                     lowerMsg.contains("giá") || lowerMsg.contains("price") ||
-                     lowerMsg.contains("sp") || lowerMsg.contains("sản phẩm")) {
-                intent = "FILTER_PRICE";
-                keyword = extractKeyword(message);
-                maxPrice = extractPrice(message);
-            }
-            else if (lowerMsg.contains("bánh") || lowerMsg.contains("kem") || 
-                     lowerMsg.contains("socola") || lowerMsg.contains("trứng") ||
-                     lowerMsg.contains("matcha") || lowerMsg.contains("vanilla")) {
-                intent = "SHOW_PRODUCTS";
-                keyword = extractKeyword(message);
-            }
+            // 1️⃣ PHÂN TÍCH Ý ĐỊNH (RULE-BASED)
+            String keyword = extractKeyword(lowerMsg);
+            PriceRange priceRange = extractPriceRange(lowerMsg);
 
-            ChatResponse response = null;
+            boolean isProductQuestion =
+                    keyword != null ||
+                    lowerMsg.contains("bánh") ||
+                    lowerMsg.contains("sản phẩm") ||
+                    lowerMsg.contains("giá") ||
+                    lowerMsg.contains("dưới") ||
+                    lowerMsg.contains("trên");
 
-            // ===== TRACK ORDER =====
-            if ("TRACK_ORDER".equals(intent)) {
-                response = ChatResponse.text("Bạn gửi giúp em mã đơn hàng để em kiểm tra nha 📦");
-                response.setMessageType("TEXT");
-            }
-            // ===== FILTER BY PRICE =====
-            else if ("FILTER_PRICE".equals(intent) && maxPrice != null) {
-                List<ProductResponseDto> products = productRepo.searchByChat(
-                    keyword, maxPrice, PageRequest.of(0, 5)
-                ).stream().map(ProductMapper::toResponse).toList();
-                
+            // 2️⃣ NẾU HỎI SẢN PHẨM → DB
+            if (isProductQuestion) {
+
+                List<ProductResponseDto> products = productRepo
+                        .filterProducts(
+                                keyword,
+                                priceRange != null ? priceRange.minPrice : null,
+                                priceRange != null ? priceRange.maxPrice : null
+                        )
+                        .stream()
+                        .map(ProductMapper::toResponse)
+                        .toList();
+
                 if (products.isEmpty()) {
-                    if (keyword != null) {
-                        response = ChatResponse.text("Dạ hiện chưa có " + keyword + " dưới " + (maxPrice.longValue() / 1000) + "k 😥");
-                    } else {
-                        response = ChatResponse.text("Dạ hiện chưa có sản phẩm dưới " + (maxPrice.longValue() / 1000) + "k 😥");
-                    }
-                    response.setMessageType("TEXT");
+                    response = ChatResponse.text(
+                            "😥 Hiện chưa có " +
+                            (keyword != null ? keyword : "sản phẩm") +
+                            " " + buildPriceRangeText(priceRange)
+                    );
                 } else {
-                    String msgText = "Em gợi ý sản phẩm dưới " + (maxPrice.longValue() / 1000) + "k cho bạn nè";
-                    response = ChatResponse.products(msgText, products);
-                    response.setMessageType("PRODUCT");
+                    response = ChatResponse.products(
+                            buildSuggestionText(keyword, priceRange),
+                            products
+                    );
                 }
             }
-            // ===== SHOW PRODUCTS =====
-            else if ("SHOW_PRODUCTS".equals(intent) && keyword != null) {
-                List<ProductResponseDto> products = productRepo.searchByChat(
-                    keyword, null, PageRequest.of(0, 5)
-                ).stream().map(ProductMapper::toResponse).toList();
-                
-                if (products.isEmpty()) {
-                    response = ChatResponse.text("Dạ hiện chưa có bánh " + keyword + " 😥");
-                    response.setMessageType("TEXT");
-                } else {
-                    response = ChatResponse.products("Em gợi ý vài mẫu bánh cho bạn nè", products);
-                    response.setMessageType("PRODUCT");
-                }
-            }
-            // ===== GENERAL AI CHAT (Chỉ gọi Gemini ở đây) =====
+            // 3️⃣ CHAT THƯỜNG → GEMINI (KHÔNG RETRY)
             else {
+                String aiText;
                 try {
-                    // Call Gemini với retry
-                    String aiAnswer = callGeminiWithRetry(message, convertToString(conversationHistory), true);
-                    
-                    // Nếu retry fail hoặc return null, dùng fallback
-                    if (aiAnswer == null || aiAnswer.isEmpty() || aiAnswer.contains("ERROR") || aiAnswer.contains("QUOTA_EXCEEDED")) {
-                        aiAnswer = "Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊";
+                    aiText = geminiService.askGeminiGeneral(message, "");
+                    if (aiText == null || aiText.isBlank()) {
+                        aiText = "Em có thể giúp bạn tìm bánh hoặc xem giá nha 😊";
                     }
-                    
-                    response = ChatResponse.text(aiAnswer);
-                    response.setMessageType("TEXT");
                 } catch (Exception e) {
-                    // Fallback khi Gemini fail hoàn toàn
-                    System.err.println("Error calling Gemini: " + e.getMessage());
-                    response = ChatResponse.text("Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊");
-                    response.setMessageType("TEXT");
+                    aiText = "Em đang hơi bận, bạn thử lại sau giúp em nha 😊";
                 }
+                response = ChatResponse.text(aiText);
             }
+
         } catch (Exception e) {
-            // Ultimate fallback nếu có lỗi không mong muốn
-            System.err.println("Unexpected error in handleChat: " + e.getMessage());
             e.printStackTrace();
-            response = ChatResponse.text("Em xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau! 😊");
-            response.setMessageType("TEXT");
+            response = ChatResponse.text("⚠️ Có lỗi xảy ra, bạn thử lại sau giúp em nha!");
         }
 
-        // Đảm bảo response không null
-        if (response == null) {
-            response = ChatResponse.text("Em có thể giúp bạn tìm bánh hoặc kiểm tra đơn hàng. Bạn muốn gì ạ? 😊");
-            response.setMessageType("TEXT");
-        }
-
-        // Lưu chat message vào DB
-        ChatMessage chatMsg = ChatMessage.builder()
-            .user(user)
-            .userMessage(message)
-            .aiResponse(response.getText())
-            .messageType(response.getMessageType())
-            .createdAt(LocalDateTime.now())
-            .build();
-        chatMessageRepo.save(chatMsg);
+        // 4️⃣ LƯU CHAT
+        chatMessageRepo.save(
+                ChatMessage.builder()
+                        .user(user)
+                        .userMessage(message)
+                        .aiResponse(response.getText())
+                        .messageType(response.getMessageType())
+                        .createdAt(LocalDateTime.now())
+                        .build()
+        );
 
         return response;
     }
 
-    /**
-     * Lấy lịch sử chat của user
-     */
-    public List<ChatMessage> getChatHistory(Long userId) {
-        User user = userRepo.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        return chatMessageRepo.findByUserOrderByCreatedAtDesc(user);
+    // ===== HELPER =====
+
+    private static class PriceRange {
+        BigDecimal minPrice;
+        BigDecimal maxPrice;
+        PriceRange(BigDecimal min, BigDecimal max) {
+            this.minPrice = min;
+            this.maxPrice = max;
+        }
     }
 
-    /**
-     * Retry với exponential backoff cho API call
-     * Max 3 lần, delay: 1s → 2s → 4s
-     */
-    private String callGeminiWithRetry(String message, String context, boolean isGeneral) {
-        int maxRetries = 3;
-        int delayMs = 1000;
-        
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
-            try {
-                String result;
-                if (isGeneral) {
-                    result = geminiService.askGeminiGeneral(message, context);
-                } else {
-                    result = geminiService.isProductOrOrderRelated(message) ? "yes" : "no";
-                }
-                
-                // Nếu QUOTA_EXCEEDED hoặc ERROR, không retry luôn return null
-                if (result != null && (result.contains("QUOTA_EXCEEDED") || result.contains("GEMINI_ERROR"))) {
-                    System.err.println("Gemini API quota exceeded or error: " + result);
-                    return null;
-                }
-                
-                // Nếu thành công, return luôn
-                if (result != null && !result.isEmpty() && !result.contains("ERROR")) {
-                    return result;
-                }
-                
-                // Nếu là lần cuối cùng, không sleep
-                if (attempt < maxRetries - 1) {
-                    System.out.println("Gemini call failed, retry " + (attempt + 1) + " after " + delayMs + "ms");
-                    Thread.sleep(delayMs);
-                    delayMs *= 2; // Exponential backoff
-                }
-                
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                System.err.println("Retry interrupted: " + e.getMessage());
-            } catch (Exception e) {
-                System.err.println("Attempt " + (attempt + 1) + " failed: " + e.getMessage());
-                
-                // Nếu không phải lần cuối, sleep rồi retry
-                if (attempt < maxRetries - 1) {
-                    try {
-                        Thread.sleep(delayMs);
-                        delayMs *= 2;
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-            }
-        }
-        
-        // Nếu hết lần retry, return fallback
+    // ===== KEYWORD =====
+    private String extractKeyword(String msg) {
+        if (msg.contains("bánh kem")) return "bánh kem";
+        if (msg.contains("bánh su")) return "bánh su";
+        if (msg.contains("bánh")) return "bánh";
+        if (msg.contains("socola")) return "socola";
+        if (msg.contains("matcha")) return "matcha";
+        if (msg.contains("vanilla")) return "vanilla";
         return null;
     }
 
-    /**
-     * Dùng Gemini để phân tích intent, keyword, maxPrice từ user message
-     * Max 2 lần retry
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> callGeminiForIntentAnalysis(String message) {
-        int maxRetries = 2;
-        int delayMs = 500;
-        
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
-            try {
-                Map<String, Object> result = geminiService.askGeminiForIntent(message);
-                
-                // Check xem result có "ERROR" hoặc "QUOTA_EXCEEDED" không
-                if (result != null && !result.isEmpty()) {
-                    String intentVal = (String) result.getOrDefault("intent", "");
-                    if (!"UNKNOWN".equals(intentVal) || (result.get("keyword") != null || result.get("maxPrice") != null)) {
-                        return result;
-                    }
-                }
-                
-                if (attempt < maxRetries - 1) {
-                    System.out.println("Intent analysis failed, retry " + (attempt + 1) + " after " + delayMs + "ms");
-                    Thread.sleep(delayMs);
-                    delayMs *= 2;
-                }
-                
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                System.err.println("Intent analysis interrupted: " + e.getMessage());
-            } catch (Exception e) {
-                System.err.println("Intent analysis attempt " + (attempt + 1) + " failed: " + e.getMessage());
-                
-                if (attempt < maxRetries - 1) {
-                    try {
-                        Thread.sleep(delayMs);
-                        delayMs *= 2;
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-            }
+    // ===== PRICE RANGE =====
+    private PriceRange extractPriceRange(String msg) {
+
+        if (msg.matches(".*từ\\s*\\d+\\s*k\\s*đến\\s*\\d+\\s*k.*")) {
+            String[] nums = msg.replaceAll("[^0-9 ]", "").trim().split("\\s+");
+            return new PriceRange(
+                    new BigDecimal(nums[0]).multiply(BigDecimal.valueOf(1000)),
+                    new BigDecimal(nums[1]).multiply(BigDecimal.valueOf(1000))
+            );
         }
-        
+
+        if (msg.contains("dưới")) {
+            BigDecimal p = extractPrice(msg);
+            return p != null ? new PriceRange(null, p) : null;
+        }
+
+        if (msg.contains("trên")) {
+            BigDecimal p = extractPrice(msg);
+            return p != null ? new PriceRange(p, null) : null;
+        }
+
         return null;
     }
 
-    /**
-     * Xóa toàn bộ chat history của user
-     */
-    public void clearChatHistory(Long userId) {
-        User user = userRepo.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        chatMessageRepo.deleteByUser(user);
+    private BigDecimal extractPrice(String msg) {
+        String num = msg.replaceAll("[^0-9]", "");
+        if (num.isEmpty()) return null;
+        return new BigDecimal(num).multiply(BigDecimal.valueOf(1000));
     }
 
-    /**
-     * Chuyển đổi lịch sử chat thành string để gửi cho AI
-     */
-    private String convertToString(List<ChatMessage> messages) {
-        return messages.stream()
-            .map(msg -> String.format("User: %s\nAI: %s", msg.getUserMessage(), msg.getAiResponse()))
-            .collect(Collectors.joining("\n\n"));
+    // ===== TEXT BUILDER =====
+    private String buildPriceRangeText(PriceRange pr) {
+        if (pr == null) return "";
+        if (pr.minPrice != null && pr.maxPrice != null)
+            return "từ " + pr.minPrice.longValue()/1000 + "k đến " + pr.maxPrice.longValue()/1000 + "k";
+        if (pr.maxPrice != null)
+            return "dưới " + pr.maxPrice.longValue()/1000 + "k";
+        if (pr.minPrice != null)
+            return "trên " + pr.minPrice.longValue()/1000 + "k";
+        return "";
     }
 
-    /**
-     * Trích xuất keyword sản phẩm từ câu hỏi
-     * Xử lý: viết tắt, synonyms, variations
-     */
-    private String extractKeyword(String message) {
-        String msg = normalizeText(message.toLowerCase());
-        
-        // Map: [viết tắt / slang] → keyword chuẩn
-        java.util.Map<String, String> keywordMap = new java.util.HashMap<>();
-        
-        // Bánh / Cake
-        keywordMap.put("b", "bánh");
-        keywordMap.put("bnh", "bánh");
-        keywordMap.put("bánh", "bánh");
-        keywordMap.put("cake", "bánh");
-        
-        // Kem / Cream
-        keywordMap.put("k", "kem");
-        keywordMap.put("km", "kem");
-        keywordMap.put("kem", "kem");
-        keywordMap.put("cream", "kem");
-        
-        // Socola / Chocolate
-        keywordMap.put("sc", "socola");
-        keywordMap.put("sô cô la", "socola");
-        keywordMap.put("chocolate", "socola");
-        keywordMap.put("choco", "socola");
-        keywordMap.put("socola", "socola");
-        
-        // Trứng / Egg
-        keywordMap.put("tr", "trứng");
-        keywordMap.put("tứ", "trứng");
-        keywordMap.put("egg", "trứng");
-        keywordMap.put("trứng", "trứng");
-        
-        // Dâu / Strawberry
-        keywordMap.put("dau", "dâu");
-        keywordMap.put("strawberry", "dâu");
-        keywordMap.put("dâu", "dâu");
-        
-        // Matcha
-        keywordMap.put("mt", "matcha");
-        keywordMap.put("matcha", "matcha");
-        
-        // Vanilla
-        keywordMap.put("va", "vanilla");
-        keywordMap.put("vani", "vanilla");
-        keywordMap.put("vanilla", "vanilla");
-        
-        // Caramel
-        keywordMap.put("cr", "caramel");
-        keywordMap.put("carame", "caramel");
-        keywordMap.put("caramel", "caramel");
-        
-        // Tiramisu
-        keywordMap.put("tm", "tiramisu");
-        keywordMap.put("tirami", "tiramisu");
-        keywordMap.put("tiramisu", "tiramisu");
-        
-        // Bơ / Butter
-        keywordMap.put("bo", "bơ");
-        keywordMap.put("butter", "bơ");
-        keywordMap.put("bơ", "bơ");
-        
-        // Nho / Grape
-        keywordMap.put("nh", "nho");
-        keywordMap.put("grape", "nho");
-        keywordMap.put("nho", "nho");
-        
-        // Mint
-        keywordMap.put("bac", "mint");
-        keywordMap.put("bạc hà", "mint");
-        keywordMap.put("mint", "mint");
-        
-        // Toffee
-        keywordMap.put("tf", "toffee");
-        keywordMap.put("taffy", "toffee");
-        keywordMap.put("toffee", "toffee");
-        
-        // Opera
-        keywordMap.put("op", "opera");
-        keywordMap.put("opera", "opera");
-        
-        // Black Forest
-        keywordMap.put("bf", "black forest");
-        keywordMap.put("black", "black forest");
-        keywordMap.put("forest", "black forest");
-        keywordMap.put("black forest", "black forest");
-        
-        // Lấy tất cả words từ message
-        String[] words = msg.split("\\s+");
-        
-        for (String word : words) {
-            word = word.replaceAll("[^a-z0-9đáàảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵỻỽ]", "");
-            
-            if (keywordMap.containsKey(word)) {
-                return keywordMap.get(word);
-            }
-        }
-        
-        // Nếu không có trong map, tìm trong list từ khóa thô
-        String[] keywords = {"bánh", "kem", "socola", "trứng", "dâu", "matcha", "vanilla", 
-            "caramel", "toffee", "mint", "nho", "bơ", "tiramisu", "opera", "black"};
-        
-        for (String keyword : keywords) {
-            if (msg.contains(keyword)) {
-                return keyword;
-            }
-        }
-        
-        return null;
-    }
-
-    /**
-     * Normalize text: loại bỏ dấu, chuyển thường
-     */
-    private String normalizeText(String text) {
-        // Loại bỏ diacritics
-        String normalized = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD);
-        return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
-    }
-
-    /**
-     * Trích xuất giá từ câu hỏi (ví: "dưới 100k", "giá 200k", "sp 150k" → 100000, 200000, 150000)
-     */
-    private BigDecimal extractPrice(String message) {
-        // Pattern: (số) k hoặc đ (tìm số trước k hoặc đ)
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+)\\s*[kđ]");
-        java.util.regex.Matcher matcher = pattern.matcher(message.toLowerCase());
-        
-        if (matcher.find()) {
-            long price = Long.parseLong(matcher.group(1)) * 1000;
-            return new BigDecimal(price);
-        }
-        return null;
+    private String buildSuggestionText(String keyword, PriceRange pr) {
+        String text = "🧁 Em gợi ý ";
+        text += (keyword != null ? keyword : "sản phẩm");
+        if (pr != null) text += " " + buildPriceRangeText(pr);
+        return text + " cho bạn nè";
     }
 }
