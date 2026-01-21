@@ -81,8 +81,6 @@ public class ChatService {
                 maxPrice = extractPrice(message);
             }
 
-            ChatResponse response = null;
-
             // ===== TRACK ORDER =====
             if ("TRACK_ORDER".equals(intent)) {
                 response = ChatResponse.text("Bạn gửi giúp em mã đơn hàng để em kiểm tra nha 📦");
