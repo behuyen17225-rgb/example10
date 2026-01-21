@@ -51,24 +51,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Tìm kiếm sản phẩm theo tên (cho Nhân viên/Khách hàng tìm kiếm)
     List<Product> findByNameContainingIgnoreCaseAndIsActiveTrue(String name);
-
     @Query("""
-    SELECT DISTINCT p
-    FROM Product p
-    JOIN p.category c
-    JOIN p.prices pr
-    WHERE p.isActive = true
-      AND (:keyword IS NULL
-           OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-           OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
-      AND (:minPrice IS NULL OR pr.price >= :minPrice)
-      AND (:maxPrice IS NULL OR pr.price <= :maxPrice)
-    """)
-    List<Product> filterProducts(
-        @Param("keyword") String keyword,
-        @Param("minPrice") BigDecimal minPrice,
-        @Param("maxPrice") BigDecimal maxPrice
-    );
-
+SELECT DISTINCT p
+FROM Product p
+JOIN p.category c
+JOIN p.prices pr
+WHERE p.isActive = true
+  AND (:keyword IS NULL
+       OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+       OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+  AND (:minPrice IS NULL OR pr.price >= :minPrice)
+  AND (:maxPrice IS NULL OR pr.price <= :maxPrice)
+""")
+List<Product> searchByChat(
+    @Param("keyword") String keyword,
+    @Param("minPrice") BigDecimal minPrice,
+    @Param("maxPrice") BigDecimal maxPrice,
+    Pageable pageable
+);
 
 }
