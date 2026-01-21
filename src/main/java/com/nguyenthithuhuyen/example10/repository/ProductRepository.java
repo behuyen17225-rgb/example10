@@ -51,7 +51,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Tìm kiếm sản phẩm theo tên (cho Nhân viên/Khách hàng tìm kiếm)
     List<Product> findByNameContainingIgnoreCaseAndIsActiveTrue(String name);
-    @Repository
 
     @Query("""
     SELECT DISTINCT p
