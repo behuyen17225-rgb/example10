@@ -48,38 +48,33 @@ public class ChatService {
         ChatResponse response = null;
 
         try {
-            // Bước 1: Dùng Gemini để phân tích intent, keyword, price từ message
-            Map<String, Object> analysis = null;
+            // Bước 1: Phân tích intent bằng keyword matching (KHÔNG gọi Gemini)
+            String lowerMsg = message.toLowerCase();
             String intent = "UNKNOWN";
             String keyword = null;
             BigDecimal maxPrice = null;
-            
-            try {
-                analysis = callGeminiForIntentAnalysis(message);
-                if (analysis != null) {
-                    intent = (String) analysis.getOrDefault("intent", "UNKNOWN");
-                    keyword = (String) analysis.get("keyword");
-                    Object priceObj = analysis.get("maxPrice");
-                    if (priceObj != null) {
-                        if (priceObj instanceof Number) {
-                            maxPrice = new BigDecimal(((Number) priceObj).longValue());
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Error analyzing intent: " + e.getMessage());
-                // Fallback to keyword extraction
+
+            // ===== DETECT INTENT =====
+            if (lowerMsg.contains("track") || lowerMsg.contains("đơn hàng") || 
+                lowerMsg.contains("kiểm tra") || lowerMsg.contains("order") ||
+                lowerMsg.contains("mã đơn")) {
+                intent = "TRACK_ORDER";
+            }
+            else if (lowerMsg.contains("dưới") || lowerMsg.contains("limit") || 
+                     lowerMsg.contains("giá") || lowerMsg.contains("price") ||
+                     lowerMsg.contains("sp") || lowerMsg.contains("sản phẩm")) {
+                intent = "FILTER_PRICE";
                 keyword = extractKeyword(message);
                 maxPrice = extractPrice(message);
+            }
+            else if (lowerMsg.contains("bánh") || lowerMsg.contains("kem") || 
+                     lowerMsg.contains("socola") || lowerMsg.contains("trứng") ||
+                     lowerMsg.contains("matcha") || lowerMsg.contains("vanilla")) {
+                intent = "SHOW_PRODUCTS";
+                keyword = extractKeyword(message);
             }
 
-            // Nếu không có keyword từ Gemini, thử extract từ message
-            if (keyword == null) {
-                keyword = extractKeyword(message);
-            }
-            if (maxPrice == null) {
-                maxPrice = extractPrice(message);
-            }
+            ChatResponse response = null;
 
             // ===== TRACK ORDER =====
             if ("TRACK_ORDER".equals(intent)) {
@@ -119,14 +114,14 @@ public class ChatService {
                     response.setMessageType("PRODUCT");
                 }
             }
-            // ===== GENERAL AI CHAT =====
+            // ===== GENERAL AI CHAT (Chỉ gọi Gemini ở đây) =====
             else {
                 try {
                     // Call Gemini với retry
                     String aiAnswer = callGeminiWithRetry(message, convertToString(conversationHistory), true);
                     
                     // Nếu retry fail hoặc return null, dùng fallback
-                    if (aiAnswer == null || aiAnswer.isEmpty() || aiAnswer.contains("ERROR")) {
+                    if (aiAnswer == null || aiAnswer.isEmpty() || aiAnswer.contains("ERROR") || aiAnswer.contains("QUOTA_EXCEEDED")) {
                         aiAnswer = "Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊";
                     }
                     
