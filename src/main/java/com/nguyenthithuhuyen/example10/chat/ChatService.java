@@ -48,20 +48,81 @@ public class ChatService {
         ChatResponse response = null;
 
         try {
-            // Bước 1: Check semantic - câu hỏi có liên quan đến sản phẩm/đơn hàng không?
-            boolean isProductOrOrderRelated = false;
+            // Bước 1: Dùng Gemini để phân tích intent, keyword, price từ message
+            Map<String, Object> analysis = null;
+            String intent = "UNKNOWN";
+            String keyword = null;
+            BigDecimal maxPrice = null;
+            
             try {
-                // Try to check semantic với retry
-                String semanticResult = callGeminiWithRetry(message, "", false);
-                isProductOrOrderRelated = semanticResult != null && !semanticResult.isEmpty();
+                analysis = callGeminiForIntentAnalysis(message);
+                if (analysis != null) {
+                    intent = (String) analysis.getOrDefault("intent", "UNKNOWN");
+                    keyword = (String) analysis.get("keyword");
+                    Object priceObj = analysis.get("maxPrice");
+                    if (priceObj != null) {
+                        if (priceObj instanceof Number) {
+                            maxPrice = new BigDecimal(((Number) priceObj).longValue());
+                        }
+                    }
+                }
             } catch (Exception e) {
-                // Nếu lỗi check semantic, coi như liên quan product
-                System.err.println("Error checking semantic: " + e.getMessage());
-                isProductOrOrderRelated = true;
+                System.err.println("Error analyzing intent: " + e.getMessage());
+                // Fallback to keyword extraction
+                keyword = extractKeyword(message);
+                maxPrice = extractPrice(message);
             }
 
-            // Nếu KHÔNG liên quan đến sản phẩm/đơn hàng → trả lời thân thiện
-            if (!isProductOrOrderRelated) {
+            // Nếu không có keyword từ Gemini, thử extract từ message
+            if (keyword == null) {
+                keyword = extractKeyword(message);
+            }
+            if (maxPrice == null) {
+                maxPrice = extractPrice(message);
+            }
+
+            ChatResponse response = null;
+
+            // ===== TRACK ORDER =====
+            if ("TRACK_ORDER".equals(intent)) {
+                response = ChatResponse.text("Bạn gửi giúp em mã đơn hàng để em kiểm tra nha 📦");
+                response.setMessageType("TEXT");
+            }
+            // ===== FILTER BY PRICE =====
+            else if ("FILTER_PRICE".equals(intent) && maxPrice != null) {
+                List<ProductResponseDto> products = productRepo.searchByChat(
+                    keyword, maxPrice, PageRequest.of(0, 5)
+                ).stream().map(ProductMapper::toResponse).toList();
+                
+                if (products.isEmpty()) {
+                    if (keyword != null) {
+                        response = ChatResponse.text("Dạ hiện chưa có " + keyword + " dưới " + (maxPrice.longValue() / 1000) + "k 😥");
+                    } else {
+                        response = ChatResponse.text("Dạ hiện chưa có sản phẩm dưới " + (maxPrice.longValue() / 1000) + "k 😥");
+                    }
+                    response.setMessageType("TEXT");
+                } else {
+                    String msgText = "Em gợi ý sản phẩm dưới " + (maxPrice.longValue() / 1000) + "k cho bạn nè";
+                    response = ChatResponse.products(msgText, products);
+                    response.setMessageType("PRODUCT");
+                }
+            }
+            // ===== SHOW PRODUCTS =====
+            else if ("SHOW_PRODUCTS".equals(intent) && keyword != null) {
+                List<ProductResponseDto> products = productRepo.searchByChat(
+                    keyword, null, PageRequest.of(0, 5)
+                ).stream().map(ProductMapper::toResponse).toList();
+                
+                if (products.isEmpty()) {
+                    response = ChatResponse.text("Dạ hiện chưa có bánh " + keyword + " 😥");
+                    response.setMessageType("TEXT");
+                } else {
+                    response = ChatResponse.products("Em gợi ý vài mẫu bánh cho bạn nè", products);
+                    response.setMessageType("PRODUCT");
+                }
+            }
+            // ===== GENERAL AI CHAT =====
+            else {
                 try {
                     // Call Gemini với retry
                     String aiAnswer = callGeminiWithRetry(message, convertToString(conversationHistory), true);
@@ -77,65 +138,6 @@ public class ChatService {
                     // Fallback khi Gemini fail hoàn toàn
                     System.err.println("Error calling Gemini: " + e.getMessage());
                     response = ChatResponse.text("Em xin lỗi, tại thời điểm này em đang bận. Vui lòng thử lại sau nhé! 😊");
-                    response.setMessageType("TEXT");
-                }
-            } 
-            // Nếu liên quan → xác định intent bằng keyword (tránh gọi Gemini quá nhiều)
-            else {
-                String lowerMsg = message.toLowerCase();
-                ChatResponse response2 = null;
-                
-                // ===== TRACK ORDER =====
-                if (lowerMsg.contains("track") || lowerMsg.contains("đơn hàng") || 
-                    lowerMsg.contains("kiểm tra") || lowerMsg.contains("order") ||
-                    lowerMsg.contains("mã đơn")) {
-                    response2 = ChatResponse.text("Bạn gửi giúp em mã đơn hàng để em kiểm tra nha 📦");
-                    response2.setMessageType("TEXT");
-                }
-                // ===== SHOW / FILTER PRODUCTS =====
-                else if (lowerMsg.contains("dưới") || lowerMsg.contains("limit") || 
-                         lowerMsg.contains("giá") || lowerMsg.contains("price")) {
-                    // Có filter giá
-                    String keyword = extractKeyword(message);
-                    BigDecimal maxPrice = extractPrice(message);
-                    
-                    if (maxPrice != null || keyword != null) {
-                        List<ProductResponseDto> products = productRepo.searchByChat(
-                            keyword, maxPrice, PageRequest.of(0, 5)
-                        ).stream().map(ProductMapper::toResponse).toList();
-                        
-                        if (products.isEmpty()) {
-                            response2 = ChatResponse.text("Dạ hiện chưa có bánh phù hợp mức giá này 😥");
-                            response2.setMessageType("TEXT");
-                        } else {
-                            response2 = ChatResponse.products("Em gợi ý vài mẫu bánh phù hợp cho bạn nè", products);
-                            response2.setMessageType("PRODUCT");
-                        }
-                    }
-                }
-                // ===== DEFAULT PRODUCT SEARCH =====
-                else {
-                    String keyword = extractKeyword(message);
-                    if (keyword != null) {
-                        List<ProductResponseDto> products = productRepo.searchByChat(
-                            keyword, null, PageRequest.of(0, 5)
-                        ).stream().map(ProductMapper::toResponse).toList();
-                        
-                        if (products.isEmpty()) {
-                            response2 = ChatResponse.text("Dạ hiện chưa có bánh " + keyword + " 😥");
-                            response2.setMessageType("TEXT");
-                        } else {
-                            response2 = ChatResponse.products("Em gợi ý vài mẫu bánh cho bạn nè", products);
-                            response2.setMessageType("PRODUCT");
-                        }
-                    }
-                }
-                
-                if (response2 != null) {
-                    response = response2;
-                } else {
-                    // Fallback: canned response
-                    response = ChatResponse.text("Em có thể giúp bạn tìm bánh hoặc kiểm tra đơn hàng. Bạn muốn gì ạ? 😊");
                     response.setMessageType("TEXT");
                 }
             }
@@ -228,6 +230,48 @@ public class ChatService {
     }
 
     /**
+     * Dùng Gemini để phân tích intent, keyword, maxPrice từ user message
+     * Max 2 lần retry
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> callGeminiForIntentAnalysis(String message) {
+        int maxRetries = 2;
+        int delayMs = 500;
+        
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Map<String, Object> result = geminiService.askGeminiForIntent(message);
+                if (result != null && !result.isEmpty()) {
+                    return result;
+                }
+                
+                if (attempt < maxRetries - 1) {
+                    System.out.println("Intent analysis failed, retry " + (attempt + 1) + " after " + delayMs + "ms");
+                    Thread.sleep(delayMs);
+                    delayMs *= 2;
+                }
+                
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Intent analysis interrupted: " + e.getMessage());
+            } catch (Exception e) {
+                System.err.println("Intent analysis attempt " + (attempt + 1) + " failed: " + e.getMessage());
+                
+                if (attempt < maxRetries - 1) {
+                    try {
+                        Thread.sleep(delayMs);
+                        delayMs *= 2;
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Xóa toàn bộ chat history của user
      */
     public void clearChatHistory(Long userId) {
@@ -256,77 +300,84 @@ public class ChatService {
         // Map: [viết tắt / slang] → keyword chuẩn
         java.util.Map<String, String> keywordMap = new java.util.HashMap<>();
         
+        // Bánh / Cake
+        keywordMap.put("b", "bánh");
+        keywordMap.put("bnh", "bánh");
+        keywordMap.put("bánh", "bánh");
+        keywordMap.put("cake", "bánh");
+        
+        // Kem / Cream
+        keywordMap.put("k", "kem");
+        keywordMap.put("km", "kem");
+        keywordMap.put("kem", "kem");
+        keywordMap.put("cream", "kem");
+        
         // Socola / Chocolate
         keywordMap.put("sc", "socola");
         keywordMap.put("sô cô la", "socola");
         keywordMap.put("chocolate", "socola");
         keywordMap.put("choco", "socola");
+        keywordMap.put("socola", "socola");
         
         // Trứng / Egg
         keywordMap.put("tr", "trứng");
         keywordMap.put("tứ", "trứng");
         keywordMap.put("egg", "trứng");
-        
-        // Kem / Cream
-        keywordMap.put("km", "kem");
-        keywordMap.put("cream", "kem");
+        keywordMap.put("trứng", "trứng");
         
         // Dâu / Strawberry
         keywordMap.put("dau", "dâu");
         keywordMap.put("strawberry", "dâu");
+        keywordMap.put("dâu", "dâu");
         
         // Matcha
         keywordMap.put("mt", "matcha");
+        keywordMap.put("matcha", "matcha");
         
         // Vanilla
         keywordMap.put("va", "vanilla");
         keywordMap.put("vani", "vanilla");
+        keywordMap.put("vanilla", "vanilla");
         
         // Caramel
         keywordMap.put("cr", "caramel");
         keywordMap.put("carame", "caramel");
+        keywordMap.put("caramel", "caramel");
         
         // Tiramisu
         keywordMap.put("tm", "tiramisu");
         keywordMap.put("tirami", "tiramisu");
+        keywordMap.put("tiramisu", "tiramisu");
         
         // Bơ / Butter
-        keywordMap.put("b", "bơ");
         keywordMap.put("bo", "bơ");
         keywordMap.put("butter", "bơ");
+        keywordMap.put("bơ", "bơ");
         
         // Nho / Grape
         keywordMap.put("nh", "nho");
         keywordMap.put("grape", "nho");
+        keywordMap.put("nho", "nho");
         
         // Mint
         keywordMap.put("bac", "mint");
         keywordMap.put("bạc hà", "mint");
+        keywordMap.put("mint", "mint");
         
         // Toffee
         keywordMap.put("tf", "toffee");
         keywordMap.put("taffy", "toffee");
+        keywordMap.put("toffee", "toffee");
         
         // Opera
         keywordMap.put("op", "opera");
+        keywordMap.put("opera", "opera");
         
         // Black Forest
         keywordMap.put("bf", "black forest");
         keywordMap.put("black", "black forest");
         keywordMap.put("forest", "black forest");
-        keywordMap.put("bạc hà", "mint");
-        
-        // Toffee
-        keywordMap.put("tf", "toffee");
-        keywordMap.put("taffy", "toffee");
-        
-        // Opera
-        keywordMap.put("op", "opera");
-        
-        // Black Forest
-        keywordMap.put("bf", "black forest");
-        keywordMap.put("black", "black forest");
-        keywordMap.put("forest", "black forest");
+        keywordMap.put("black forest", "black forest");
         
         // Lấy tất cả words từ message
         String[] words = msg.split("\\s+");
@@ -340,7 +391,7 @@ public class ChatService {
         }
         
         // Nếu không có trong map, tìm trong list từ khóa thô
-        String[] keywords = {"socola", "trứng", "kem", "dâu", "matcha", "vanilla", 
+        String[] keywords = {"bánh", "kem", "socola", "trứng", "dâu", "matcha", "vanilla", 
             "caramel", "toffee", "mint", "nho", "bơ", "tiramisu", "opera", "black"};
         
         for (String keyword : keywords) {
@@ -362,10 +413,11 @@ public class ChatService {
     }
 
     /**
-     * Trích xuất giá từ câu hỏi (ví: "dưới 100k" → 100000)
+     * Trích xuất giá từ câu hỏi (ví: "dưới 100k", "giá 200k", "sp 150k" → 100000, 200000, 150000)
      */
     private BigDecimal extractPrice(String message) {
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+)\\s*k");
+        // Pattern: (số) k hoặc đ (tìm số trước k hoặc đ)
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+)\\s*[kđ]");
         java.util.regex.Matcher matcher = pattern.matcher(message.toLowerCase());
         
         if (matcher.find()) {
