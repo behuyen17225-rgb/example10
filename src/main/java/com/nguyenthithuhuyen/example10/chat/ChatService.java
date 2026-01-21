@@ -193,6 +193,12 @@ public class ChatService {
                     result = geminiService.isProductOrOrderRelated(message) ? "yes" : "no";
                 }
                 
+                // Nếu QUOTA_EXCEEDED hoặc ERROR, không retry luôn return null
+                if (result != null && (result.contains("QUOTA_EXCEEDED") || result.contains("GEMINI_ERROR"))) {
+                    System.err.println("Gemini API quota exceeded or error: " + result);
+                    return null;
+                }
+                
                 // Nếu thành công, return luôn
                 if (result != null && !result.isEmpty() && !result.contains("ERROR")) {
                     return result;
@@ -239,8 +245,13 @@ public class ChatService {
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 Map<String, Object> result = geminiService.askGeminiForIntent(message);
+                
+                // Check xem result có "ERROR" hoặc "QUOTA_EXCEEDED" không
                 if (result != null && !result.isEmpty()) {
-                    return result;
+                    String intentVal = (String) result.getOrDefault("intent", "");
+                    if (!"UNKNOWN".equals(intentVal) || (result.get("keyword") != null || result.get("maxPrice") != null)) {
+                        return result;
+                    }
                 }
                 
                 if (attempt < maxRetries - 1) {

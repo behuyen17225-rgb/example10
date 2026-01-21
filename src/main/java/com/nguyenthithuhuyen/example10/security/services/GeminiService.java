@@ -19,21 +19,70 @@ public class GeminiService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    // Simple cache để tránh gọi Gemini quá nhiều lần cho cùng prompt
+    // Cache cho responses (tránh gọi Gemini lại cho câu hỏi giống nhau)
     private final Map<String, String> responseCache = new ConcurrentHashMap<>();
-    private static final int CACHE_SIZE_LIMIT = 50;
+    private static final int CACHE_SIZE_LIMIT = 100;
+    private static final long CACHE_TTL_MS = 3600000; // 1 giờ
+    
+    // Rate limiting - tối đa 15 requests/phút (để an toàn với free tier)
+    private static final long MIN_REQUEST_INTERVAL_MS = 4000; // 4 giây giữa các request
+    private long lastRequestTime = 0;
+    private final Object rateLimitLock = new Object();
+    
+    // Cache entry với timestamp
+    private static class CacheEntry {
+        String value;
+        long timestamp;
+        CacheEntry(String value) {
+            this.value = value;
+            this.timestamp = System.currentTimeMillis();
+        }
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > CACHE_TTL_MS;
+        }
+    }
+    
+    private final Map<String, CacheEntry> responseCacheWithTTL = new ConcurrentHashMap<>();
+    
+    /**
+     * Enforce rate limiting - đảm bảo không gọi quá nhanh
+     */
+    private void enforceRateLimit() throws InterruptedException {
+        synchronized (rateLimitLock) {
+            long now = System.currentTimeMillis();
+            long timeSinceLastRequest = now - lastRequestTime;
+            
+            if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
+                long waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
+                System.out.println("⏳ Rate limit: waiting " + waitTime + "ms before next request...");
+                Thread.sleep(waitTime);
+            }
+            
+            lastRequestTime = System.currentTimeMillis();
+        }
+    }
 
-    /* ================= GỌI GEMINI – TEXT (WITH CACHING) ================= */
+    /* ================= GỌI GEMINI – TEXT (WITH CACHING & RATE LIMITING) ================= */
     public String askGemini(String prompt) {
         // Kiểm tra cache trước
         String cacheKey = "gemini:" + prompt.hashCode();
-        if (responseCache.containsKey(cacheKey)) {
+        
+        CacheEntry cached = responseCacheWithTTL.get(cacheKey);
+        if (cached != null && !cached.isExpired()) {
             System.out.println("✅ Cache HIT: " + cacheKey);
-            return responseCache.get(cacheKey);
+            return cached.value;
+        }
+
+        try {
+            // Enforce rate limiting
+            enforceRateLimit();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "RATE_LIMITED";
         }
 
         String url =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent"
             + "?key=" + apiKey;
 
         Map<String, Object> body = Map.of(
@@ -72,11 +121,11 @@ public class GeminiService {
 
             String result = parts.get(0).get("text").toString();
             
-            // Lưu vào cache
-            if (responseCache.size() >= CACHE_SIZE_LIMIT) {
-                responseCache.clear(); // Clear khi vượt limit
+            // Lưu vào cache với TTL
+            if (responseCacheWithTTL.size() >= CACHE_SIZE_LIMIT) {
+                responseCacheWithTTL.clear();
             }
-            responseCache.put(cacheKey, result);
+            responseCacheWithTTL.put(cacheKey, new CacheEntry(result));
             
             return result;
 
