@@ -36,8 +36,9 @@ public class OrderItem {
 
     @Column(nullable = false)
     private BigDecimal price;
-
+@Column(name = "created_at", nullable = false)
      private LocalDateTime createdAt;
+     @Column(name = "created_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Transient
