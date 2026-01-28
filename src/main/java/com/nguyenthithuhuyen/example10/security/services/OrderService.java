@@ -38,95 +38,92 @@ public class OrderService {
      * USER / STAFF CREATE ORDER
      * ==========================================================
      */
-    
-@Transactional
-public Order createOrder(CreateOrderRequest req, String username) {
 
-    User user = userRepo.findByUsername(username)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+    @Transactional
+    public Order createOrder(CreateOrderRequest req, String username) {
 
-    Order order = new Order();
-    order.setUser(user);
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-    // ===== ORDER TYPE =====
-    OrderType orderType = OrderType.valueOf(req.getOrderType());
-    order.setOrderType(orderType);
-    order.setCreatedAt(LocalDateTime.now());
-    order.setStatus(OrderStatus.PENDING);
-order.setPaymentMethod(req.getPaymentMethod());
-    /* ================= TABLE LOGIC ================= */
-    if (orderType == OrderType.DINE_IN) {
+        Order order = new Order();
+        order.setUser(user);
 
-        if (req.getTableId() == null)
-            throw new RuntimeException("Table is required for DINE_IN");
+        // ===== ORDER TYPE =====
+        OrderType orderType = OrderType.valueOf(req.getOrderType());
+        order.setOrderType(orderType);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setStatus(OrderStatus.PENDING);
+        order.setPaymentMethod(req.getPaymentMethod());
+        /* ================= TABLE LOGIC ================= */
+        if (orderType == OrderType.DINE_IN) {
 
-        TableEntity table = tableRepo.findById(req.getTableId())
-                .orElseThrow(() -> new RuntimeException("Table not found"));
+            if (req.getTableId() == null)
+                throw new RuntimeException("Table is required for DINE_IN");
 
-        if (table.getStatus() != Status.FREE)
-            throw new RuntimeException("Table not available");
+            TableEntity table = tableRepo.findById(req.getTableId())
+                    .orElseThrow(() -> new RuntimeException("Table not found"));
 
-        order.setTable(table);
+            if (table.getStatus() != Status.FREE)
+                throw new RuntimeException("Table not available");
 
-        if (req.getPickupTime() != null) {
-            // đặt trước
-            order.setPickupTime(req.getPickupTime());
-            table.setStatus(Status.RESERVED);
-            order.setStatus(OrderStatus.PENDING);
-        } else {
-            // ăn tại chỗ
-            table.setStatus(Status.OCCUPIED);
-            order.setStatus(OrderStatus.PREPARING);
+            order.setTable(table);
+
+            if (req.getPickupTime() != null) {
+                // đặt trước
+                order.setPickupTime(req.getPickupTime());
+                table.setStatus(Status.RESERVED);
+                order.setStatus(OrderStatus.PENDING);
+            } else {
+                // ăn tại chỗ
+                table.setStatus(Status.OCCUPIED);
+                order.setStatus(OrderStatus.PREPARING);
+            }
+
+            tableRepo.save(table);
         }
 
-        tableRepo.save(table);
+        /* ================= CUSTOMER INFO ================= */
+        order.setCustomerName(req.getCustomerName());
+        order.setPhone(req.getPhone());
+        order.setAddress(
+                orderType == OrderType.TAKE_AWAY
+                        ? req.getAddress()
+                        : "Tại quán");
+
+        /* ================= ORDER ITEMS ================= */
+        BigDecimal total = BigDecimal.ZERO;
+        List<OrderItem> orderItems = new ArrayList<>();
+
+        for (OrderItemRequest itemReq : req.getItems()) {
+
+            Product product = productRepo.findById(itemReq.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            BigDecimal price = resolvePrice(product, itemReq.getSize());
+
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProduct(product);
+            item.setSize(itemReq.getSize());
+            item.setQuantity(itemReq.getQuantity());
+            item.setPrice(price);
+            item.setCreatedAt(LocalDateTime.now());
+            item.setUpdatedAt(LocalDateTime.now());
+            BigDecimal itemTotal = price.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+            total = total.add(itemTotal);
+
+            orderItems.add(item);
+        }
+
+        order.setOrderItems(orderItems);
+        order.setTotalAmount(total);
+        order.setDiscount(BigDecimal.ZERO);
+        order.setFinalAmount(total);
+
+        return orderRepository.save(order);
     }
 
-    /* ================= CUSTOMER INFO ================= */
-    order.setCustomerName(req.getCustomerName());
-    order.setPhone(req.getPhone());
-    order.setAddress(
-            orderType == OrderType.TAKE_AWAY
-                    ? req.getAddress()
-                    : "Tại quán"
-    );
-
-    /* ================= ORDER ITEMS ================= */
-    BigDecimal total = BigDecimal.ZERO;
-    List<OrderItem> orderItems = new ArrayList<>();
-
-    for (OrderItemRequest itemReq : req.getItems()) {
-
-        Product product = productRepo.findById(itemReq.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        BigDecimal price = resolvePrice(product, itemReq.getSize());
-
-        OrderItem item = new OrderItem();
-        item.setOrder(order);
-        item.setProduct(product);
-        item.setSize(itemReq.getSize());
-        item.setQuantity(itemReq.getQuantity());
-        item.setPrice(price);
-
-        BigDecimal itemTotal =
-                price.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
-        total = total.add(itemTotal);
-
-        orderItems.add(item);
-    }
-
-    order.setOrderItems(orderItems);
-    order.setTotalAmount(total);
-    order.setDiscount(BigDecimal.ZERO);
-    order.setFinalAmount(total);
-
-    return orderRepository.save(order);
-}
-
-
-
-/*
+    /*
      * ==========================================================
      * STAFF CREATE ORDER
      * ==========================================================
@@ -226,42 +223,40 @@ order.setPaymentMethod(req.getPaymentMethod());
         return orderRepository.findByUser_Username(username);
     }
 
-public List<Map<String, Object>> getTopSellingProducts(int limit) {
+    public List<Map<String, Object>> getTopSellingProducts(int limit) {
 
-    return orderRepository
-            .findTopSellingProducts(
-                    OrderStatus.PAID,
-                    PageRequest.of(0, limit)
-            )
-            .stream()
-            .map(r -> Map.of(
-                    "productId", r[0],
-                    "productName", r[1],
-                    "quantitySold", r[2]
-            ))
-            .toList();
-}
-public List<Map<String, Object>> getRevenueByCategory() {
+        return orderRepository
+                .findTopSellingProducts(
+                        OrderStatus.PAID,
+                        PageRequest.of(0, limit))
+                .stream()
+                .map(r -> Map.of(
+                        "productId", r[0],
+                        "productName", r[1],
+                        "quantitySold", r[2]))
+                .toList();
+    }
 
-    return orderRepository
-            .findRevenueByCategory(OrderStatus.PAID)
-            .stream()
-            .map(r -> Map.of(
-                    "category", r[0],
-                    "revenue", r[1]
-            ))
-            .toList();
-}
-public List<Map<String, Object>> getRevenueByDay() {
+    public List<Map<String, Object>> getRevenueByCategory() {
 
-    return orderRepository
-            .findRevenueByDay(OrderStatus.PAID)
-            .stream()
-            .map(r -> Map.of(
-                    "date", r[0],
-                    "revenue", r[1]
-            ))
-            .toList();
-}
+        return orderRepository
+                .findRevenueByCategory(OrderStatus.PAID)
+                .stream()
+                .map(r -> Map.of(
+                        "category", r[0],
+                        "revenue", r[1]))
+                .toList();
+    }
+
+    public List<Map<String, Object>> getRevenueByDay() {
+
+        return orderRepository
+                .findRevenueByDay(OrderStatus.PAID)
+                .stream()
+                .map(r -> Map.of(
+                        "date", r[0],
+                        "revenue", r[1]))
+                .toList();
+    }
 
 }
