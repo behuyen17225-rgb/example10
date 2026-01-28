@@ -1,13 +1,18 @@
 package com.nguyenthithuhuyen.example10.dto;
 
+import jakarta.validation.constraints.*;
 import lombok.Data;
-
-import java.math.BigDecimal;
 
 @Data
 public class OrderItemRequest {
 
-    private Long productId;   // ID sản phẩm
-    private Integer quantity; // số lượng
-    private String size;  // giá tại thời điểm đặt
+    @NotNull(message = "productId is required")
+    private Long productId;
+
+    @NotNull(message = "quantity is required")
+    @Min(value = 1, message = "quantity must be >= 1")
+    private Integer quantity;
+
+    @NotBlank(message = "size is required")
+    private String size;
 }

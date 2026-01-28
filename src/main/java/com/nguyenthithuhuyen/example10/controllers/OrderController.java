@@ -4,6 +4,8 @@ import com.nguyenthithuhuyen.example10.dto.CreateOrderRequest;
 import com.nguyenthithuhuyen.example10.entity.Order;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.security.services.OrderService;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,14 +32,14 @@ public class OrderController {
 @PostMapping
 @PreAuthorize("hasAnyRole('USER','ADMIN')")
 public ResponseEntity<Order> createOrder(
-        @RequestBody CreateOrderRequest request
+        @Valid @RequestBody CreateOrderRequest request
 ) {
     String username = SecurityContextHolder
             .getContext()
             .getAuthentication()
             .getName();
 
-    log.info("🛒 User {} creating order", username);
+    log.info("🛒 Create order request = {}", request);
 
     Order created = orderService.createOrder(request, username);
     return ResponseEntity.status(201).body(created);

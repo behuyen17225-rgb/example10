@@ -1,8 +1,5 @@
 package com.nguyenthithuhuyen.example10.dto;
-import com.nguyenthithuhuyen.example10.dto.OrderItemRequest;
-import com.nguyenthithuhuyen.example10.entity.enums.OrderType;
-
-
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,15 +8,24 @@ import java.util.List;
 @Data
 public class CreateOrderRequest {
 
-    private String orderType; // DINE_IN | TAKE_AWAY | PRE_ORDER
-    private Long tableId;      // nullable
-    private LocalDateTime pickupTime; // chỉ dùng cho PRE_ORDER
+    @NotBlank(message = "orderType is required")
+    private String orderType;
 
+    private Long tableId;
+
+    private LocalDateTime pickupTime;
+
+    @NotBlank(message = "customerName is required")
     private String customerName;
-    private String address;
-    private String phone;
-    private String paymentMethod;
-    private String note;
 
+    @NotBlank(message = "phone is required")
+    private String phone;
+
+    private String address;
+
+    @NotBlank(message = "paymentMethod is required")
+    private String paymentMethod;
+
+    @NotEmpty(message = "items must not be empty")
     private List<OrderItemRequest> items;
 }
