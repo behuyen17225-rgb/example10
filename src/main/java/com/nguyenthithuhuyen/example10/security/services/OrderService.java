@@ -224,17 +224,42 @@ public class OrderService {
         return orderRepository.findByUser_Username(username);
     }
 
-    public List<Map<String, Object>> getTopSellingProducts(int limit) {
-        return orderRepository.findTopSellingProducts(
-                OrderStatus.PAID,
-                PageRequest.of(0, limit));
-    }
+public List<Map<String, Object>> getTopSellingProducts(int limit) {
 
-    public List<Map<String, Object>> getRevenueByCategory() {
-        return orderRepository.findRevenueByCategory(OrderStatus.PAID);
-    }
+    return orderRepository
+            .findTopSellingProducts(
+                    OrderStatus.PAID,
+                    PageRequest.of(0, limit)
+            )
+            .stream()
+            .map(r -> Map.of(
+                    "productId", r[0],
+                    "productName", r[1],
+                    "quantitySold", r[2]
+            ))
+            .toList();
+}
+public List<Map<String, Object>> getRevenueByCategory() {
 
-    public List<Map<String, Object>> getRevenueByDay() {
-        return orderRepository.findRevenueByDay(OrderStatus.PAID);
-    }
+    return orderRepository
+            .findRevenueByCategory(OrderStatus.PAID)
+            .stream()
+            .map(r -> Map.of(
+                    "category", r[0],
+                    "revenue", r[1]
+            ))
+            .toList();
+}
+public List<Map<String, Object>> getRevenueByDay() {
+
+    return orderRepository
+            .findRevenueByDay(OrderStatus.PAID)
+            .stream()
+            .map(r -> Map.of(
+                    "date", r[0],
+                    "revenue", r[1]
+            ))
+            .toList();
+}
+
 }
