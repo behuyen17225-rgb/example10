@@ -1,5 +1,6 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
+import com.nguyenthithuhuyen.example10.dto.CreateOrderRequest;
 import com.nguyenthithuhuyen.example10.entity.Order;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.security.services.OrderService;
@@ -26,20 +27,21 @@ public class OrderController {
        USER / ADMIN – TẠO ORDER
        (NHÂN VIÊN KHÔNG ĐƯỢC TẠO)
        ===================================================== */
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
-    @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
+@PostMapping
+@PreAuthorize("hasAnyRole('USER','ADMIN')")
+public ResponseEntity<Order> createOrder(
+        @RequestBody CreateOrderRequest request
+) {
+    String username = SecurityContextHolder
+            .getContext()
+            .getAuthentication()
+            .getName();
 
-        String username = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+    log.info("🛒 User {} creating order", username);
 
-        log.info("🛒 User {} creating order", username);
-
-        Order created = orderService.createOrder(order, username);
-        return ResponseEntity.status(201).body(created);
-    }
+    Order created = orderService.createOrder(request, username);
+    return ResponseEntity.status(201).body(created);
+}
 
     /* =====================================================
        USER / ADMIN – XEM ĐƠN CỦA CHÍNH MÌNH

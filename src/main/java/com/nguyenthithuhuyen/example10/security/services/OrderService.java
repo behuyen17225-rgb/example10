@@ -1,5 +1,7 @@
 package com.nguyenthithuhuyen.example10.security.services;
 
+import com.nguyenthithuhuyen.example10.dto.CreateOrderRequest;
+import com.nguyenthithuhuyen.example10.dto.OrderItemRequest;
 import com.nguyenthithuhuyen.example10.entity.*;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderType;
@@ -36,99 +38,99 @@ public class OrderService {
      * USER / STAFF CREATE ORDER
      * ==========================================================
      */
-    @Transactional
-    public Order createOrder(Order req, String username) {
+    
+@Transactional
+public Order createOrder(CreateOrderRequest req, String username) {
 
-        User user = userRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    User user = userRepo.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Order order = new Order();
-        order.setUser(user);
-        order.setOrderType(req.getOrderType());
-        order.setCreatedAt(LocalDateTime.now());
+    Order order = new Order();
+    order.setUser(user);
 
-        // ===== DEFAULT STATUS =====
-        order.setStatus(OrderStatus.PENDING);
+    // ===== ORDER TYPE =====
+    OrderType orderType = OrderType.valueOf(req.getOrderType());
+    order.setOrderType(orderType);
+    order.setCreatedAt(LocalDateTime.now());
+    order.setStatus(OrderStatus.PENDING);
 
-        /* ================= TABLE LOGIC ================= */
-        if (req.getOrderType() == OrderType.DINE_IN) {
+    /* ================= TABLE LOGIC ================= */
+    if (orderType == OrderType.DINE_IN) {
 
-            if (req.getTable() == null)
-                throw new RuntimeException("Table required");
+        if (req.getTableId() == null)
+            throw new RuntimeException("Table is required for DINE_IN");
 
-            TableEntity table = tableRepo.findById(req.getTable().getId())
-                    .orElseThrow(() -> new RuntimeException("Table not found"));
+        TableEntity table = tableRepo.findById(req.getTableId())
+                .orElseThrow(() -> new RuntimeException("Table not found"));
 
-            if (table.getStatus() != Status.FREE)
-                throw new RuntimeException("Table not available");
+        if (table.getStatus() != Status.FREE)
+            throw new RuntimeException("Table not available");
 
-            order.setTable(table);
+        order.setTable(table);
 
-            // KHÁCH ĐẶT BÀN TRƯỚC
-            if (req.getPickupTime() != null) {
-                order.setPickupTime(req.getPickupTime());
-                order.setStatus(OrderStatus.PENDING);
-                table.setStatus(Status.RESERVED);
-            }
-            // KHÁCH TỚI QUÁN
-            else {
-                order.setStatus(OrderStatus.PREPARING);
-                table.setStatus(Status.OCCUPIED);
-            }
-
-            tableRepo.save(table);
+        if (req.getPickupTime() != null) {
+            // đặt trước
+            order.setPickupTime(req.getPickupTime());
+            table.setStatus(Status.RESERVED);
+            order.setStatus(OrderStatus.PENDING);
+        } else {
+            // ăn tại chỗ
+            table.setStatus(Status.OCCUPIED);
+            order.setStatus(OrderStatus.PREPARING);
         }
 
-        /* ================= CUSTOMER INFO ================= */
-        order.setCustomerName(req.getCustomerName());
-        order.setPhone(req.getPhone());
-
-        order.setAddress(
-                req.getOrderType() == OrderType.TAKE_AWAY
-                        ? "Khách tới lấy"
-                        : "Tại quán");
-
-        /* ================= ORDER ITEMS ================= */
-        BigDecimal total = BigDecimal.ZERO;
-        List<OrderItem> items = new ArrayList<>();
-
-        for (OrderItem reqItem : req.getOrderItems()) {
-
-            Product product = productRepo.findById(reqItem.getProduct().getId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            OrderItem item = new OrderItem();
-            item.setOrder(order);
-            item.setProduct(product);
-            item.setSize(reqItem.getSize());
-            item.setQuantity(reqItem.getQuantity());
-
-            BigDecimal price = resolvePrice(product, reqItem.getSize());
-            item.setPrice(price);
-
-            BigDecimal itemTotal = price.multiply(BigDecimal.valueOf(reqItem.getQuantity()));
-            total = total.add(itemTotal);
-
-            items.add(item);
-        }
-
-        order.setOrderItems(items);
-        order.setTotalAmount(total);
-        order.setDiscount(BigDecimal.ZERO);
-        order.setFinalAmount(total);
-
-        return orderRepository.save(order);
+        tableRepo.save(table);
     }
 
-    /*
+    /* ================= CUSTOMER INFO ================= */
+    order.setCustomerName(req.getCustomerName());
+    order.setPhone(req.getPhone());
+    order.setAddress(
+            orderType == OrderType.TAKE_AWAY
+                    ? req.getAddress()
+                    : "Tại quán"
+    );
+
+    /* ================= ORDER ITEMS ================= */
+    BigDecimal total = BigDecimal.ZERO;
+    List<OrderItem> orderItems = new ArrayList<>();
+
+    for (OrderItemRequest itemReq : req.getItems()) {
+
+        Product product = productRepo.findById(itemReq.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        BigDecimal price = resolvePrice(product, itemReq.getSize());
+
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProduct(product);
+        item.setSize(itemReq.getSize());
+        item.setQuantity(itemReq.getQuantity());
+        item.setPrice(price);
+
+        BigDecimal itemTotal =
+                price.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+        total = total.add(itemTotal);
+
+        orderItems.add(item);
+    }
+
+    order.setOrderItems(orderItems);
+    order.setTotalAmount(total);
+    order.setDiscount(BigDecimal.ZERO);
+    order.setFinalAmount(total);
+
+    return orderRepository.save(order);
+}
+
+
+
+/*
      * ==========================================================
      * STAFF CREATE ORDER
      * ==========================================================
      */
-    @Transactional
-    public Order staffCreateOrder(Order orderRequest, String staffUsername) {
-        return createOrder(orderRequest, staffUsername);
-    }
 
     /*
      * ==========================================================

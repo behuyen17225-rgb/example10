@@ -9,5 +9,5 @@ public class OrderItemRequest {
 
     private Long productId;   // ID sản phẩm
     private Integer quantity; // số lượng
-    private BigDecimal price; // giá tại thời điểm đặt
+    private String size;  // giá tại thời điểm đặt
 }
