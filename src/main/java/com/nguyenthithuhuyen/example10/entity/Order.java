@@ -57,7 +57,9 @@ public class Order {
     private String address;
 
     /* ================= PAYMENT ================= */
-    private String paymentMethod;
+    @Column(nullable = false)
+private String paymentMethod;
+
     private String paymentRef;
     private LocalDateTime paidAt;
 

@@ -53,7 +53,7 @@ public Order createOrder(CreateOrderRequest req, String username) {
     order.setOrderType(orderType);
     order.setCreatedAt(LocalDateTime.now());
     order.setStatus(OrderStatus.PENDING);
-
+order.setPaymentMethod(req.getPaymentMethod());
     /* ================= TABLE LOGIC ================= */
     if (orderType == OrderType.DINE_IN) {
 
