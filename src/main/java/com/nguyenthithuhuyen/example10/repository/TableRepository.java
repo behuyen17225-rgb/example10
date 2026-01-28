@@ -10,5 +10,5 @@ import java.util.List;
 @Repository
 public interface TableRepository extends JpaRepository<TableEntity, Long> {
     List<TableEntity> findByStatus(Status status);
-    TableEntity findByNumber(Integer number);
+    TableEntity findByNumber(Integer tableNumber);
 }
