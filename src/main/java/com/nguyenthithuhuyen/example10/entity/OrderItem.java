@@ -37,6 +37,9 @@ public class OrderItem {
     @Column(nullable = false)
     private BigDecimal price;
 
+     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
     @Transient
     public BigDecimal getSubtotal() {
         return price.multiply(BigDecimal.valueOf(quantity));

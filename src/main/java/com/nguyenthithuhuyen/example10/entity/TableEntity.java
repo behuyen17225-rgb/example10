@@ -26,6 +26,10 @@ public class TableEntity {
     @Builder.Default
     private Integer capacity = 4;
 
+
+    private Integer number;
+
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
