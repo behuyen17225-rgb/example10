@@ -34,7 +34,6 @@ public class TableServiceImpl implements TableService {
     @Override
     public TableEntity updateTable(Long id, TableEntity table) {
         TableEntity existing = getTableById(id);
-        existing.setNumber(table.getNumber());
         existing.setCapacity(table.getCapacity());
         existing.setStatus(table.getStatus());
         return tableRepository.save(existing);

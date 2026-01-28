@@ -6,12 +6,13 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
-@Builder
+@Entity
+@Table(name = "restaurant_tables")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "restaurant_tables") // tránh trùng từ khóa SQL
+@Builder
 public class TableEntity {
 
     @Id
@@ -19,7 +20,7 @@ public class TableEntity {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private Integer number;
+    private Integer tableNumber;
 
     @Column(nullable = false)
     @Builder.Default
@@ -30,23 +31,17 @@ public class TableEntity {
     @Builder.Default
     private Status status = Status.FREE;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    @Column(nullable = false)
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    @Column(name = "table_number")
-    private Integer tableNumber;
- // Nếu không dùng @Data, cần có getter/setter
+
     @PrePersist
-    protected void onCreate() {
+    void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
-    protected void onUpdate() {
+    void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 }

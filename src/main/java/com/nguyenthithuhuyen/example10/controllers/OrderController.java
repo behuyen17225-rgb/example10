@@ -24,23 +24,25 @@ public class OrderController {
 
     /* =====================================================
        USER / ADMIN – TẠO ORDER
+       (NHÂN VIÊN KHÔNG ĐƯỢC TẠO)
        ===================================================== */
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping
     public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        
 
         String username = SecurityContextHolder
                 .getContext()
                 .getAuthentication()
                 .getName();
 
+        log.info("🛒 User {} creating order", username);
+
         Order created = orderService.createOrder(order, username);
         return ResponseEntity.status(201).body(created);
     }
 
     /* =====================================================
-       USER / ADMIN – XEM TẤT CẢ ĐƠN CỦA CHÍNH MÌNH
+       USER / ADMIN – XEM ĐƠN CỦA CHÍNH MÌNH
        ===================================================== */
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping("/my")
@@ -51,23 +53,19 @@ public class OrderController {
                     .getAuthentication()
                     .getName();
 
-            log.info("📋 Getting orders for user: {}", username);
-            
             List<Order> orders = orderService.getOrdersByUsername(username);
-            log.info("✅ Found {} orders", orders.size());
-            
             return ResponseEntity.ok(orders);
+
         } catch (Exception e) {
-            log.error("❌ Error getting orders: {}", e.getMessage(), e);
+            log.error("❌ Error getting orders", e);
             return ResponseEntity.status(500).body(Map.of(
-                    "error", e.getMessage(),
-                    "type", e.getClass().getSimpleName()
+                    "error", e.getMessage()
             ));
         }
     }
 
     /* =====================================================
-       USER / ADMIN – XEM CHI TIẾT 1 ĐƠN CỦA CHÍNH MÌNH
+       USER / ADMIN – XEM CHI TIẾT ĐƠN CỦA MÌNH
        ===================================================== */
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping("/my/{orderId}")
@@ -82,7 +80,7 @@ public class OrderController {
 
         Order order = orderService.getOrderById(orderId);
 
-        // 🔐 BẢO MẬT: chỉ xem đơn của mình
+        // 🔐 chỉ được xem đơn của mình
         if (!order.getUser().getUsername().equals(username)) {
             return ResponseEntity.status(403).build();
         }
@@ -91,7 +89,7 @@ public class OrderController {
     }
 
     /* =====================================================
-       ADMIN / MODERATOR – XEM TẤT CẢ ORDER
+       STAFF / ADMIN – XEM TẤT CẢ ĐƠN
        ===================================================== */
     @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
     @GetMapping
@@ -100,7 +98,8 @@ public class OrderController {
     }
 
     /* =====================================================
-       ADMIN / MODERATOR – UPDATE STATUS
+       STAFF / ADMIN – UPDATE TRẠNG THÁI ĐƠN
+       (CHECK, XÁC NHẬN, HOÀN THÀNH...)
        ===================================================== */
     @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
     @PutMapping("/{id}/status")
@@ -112,9 +111,8 @@ public class OrderController {
         OrderStatus newStatus =
                 OrderStatus.valueOf(status.toUpperCase());
 
-        return ResponseEntity.ok(
-                orderService.updateOrderStatus(id, newStatus)
-        );
+        Order updated = orderService.updateOrderStatus(id, newStatus);
+        return ResponseEntity.ok(updated);
     }
 
     /* =====================================================

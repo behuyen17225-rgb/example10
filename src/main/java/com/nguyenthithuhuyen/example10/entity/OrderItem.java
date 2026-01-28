@@ -9,66 +9,36 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "order_items")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /* ================= ORDER ================= */
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "order_id", nullable = false)
-    @JsonBackReference
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
     private Order order;
 
-    /* ================= PRODUCT ================= */
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "product_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
     private Product product;
 
-    /* ================= SIZE (BÁNH S / M / L) ================= */
-    @Column(nullable = false, length = 10)
-    private String size;
-
-    /* ================= QUANTITY ================= */
     @Column(nullable = false)
-    @Builder.Default
-    private Integer quantity = 1;
+    private String size; // S M L
 
-    /* ================= UNIT PRICE ================= */
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false)
+    private Integer quantity;
+
+    @Column(nullable = false)
     private BigDecimal price;
 
-    /* ================= SUBTOTAL ================= */
-    @Column(nullable = false, precision = 10, scale = 2)
-    @Builder.Default
-    private BigDecimal subtotal = BigDecimal.ZERO;
-
-    /* ================= AUDIT ================= */
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        normalize();
-        subtotal = price.multiply(BigDecimal.valueOf(quantity));
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        normalize();
-        subtotal = price.multiply(BigDecimal.valueOf(quantity));
-        updatedAt = LocalDateTime.now();
-    }
-
-    private void normalize() {
-        if (quantity == null || quantity <= 0) quantity = 1;
-        if (price == null) price = BigDecimal.ZERO;
+    @Transient
+    public BigDecimal getSubtotal() {
+        return price.multiply(BigDecimal.valueOf(quantity));
     }
 }

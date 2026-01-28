@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
+import com.nguyenthithuhuyen.example10.entity.enums.OrderType;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,89 +29,56 @@ public class Order {
 
     /* ================= USER ================= */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    @JoinColumn(nullable = false)
     private User user;
 
-    /* ================= TABLE ================= */
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "table_id")
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-private TableEntity table;
-    /* ================= STATUS ================= */
+    /* ================= TYPE ================= */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private OrderType orderType;
+
+    /* ================= TABLE ================= */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "table_id")
+    private TableEntity table;
+
+    /* ================= STATUS ================= */
+    @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
     /* ================= MONEY ================= */
-    @Column(name = "total_amount", precision = 10, scale = 2, nullable = false)
-    @Builder.Default
-    private BigDecimal totalAmount = BigDecimal.ZERO;
+    private BigDecimal totalAmount;
+    private BigDecimal discount;
+    private BigDecimal finalAmount;
 
-    @Column(precision = 10, scale = 2, nullable = false)
-    @Builder.Default
-    private BigDecimal discount = BigDecimal.ZERO;
-
-    @Column(name = "final_amount", precision = 10, scale = 2, nullable = false)
-    @Builder.Default
-    private BigDecimal finalAmount = BigDecimal.ZERO;
-
-    /* ================= CUSTOMER INFO ================= */
-    @Column(name = "customer_name", nullable = false)
+    /* ================= CUSTOMER ================= */
     private String customerName;
-
-    @Column(nullable = false)
+    private String phone;
     private String address;
 
-    @Column(nullable = false)
-    private String phone;
-
-    @Column(name = "payment_method", nullable = false)
-    private String paymentMethod; // CASH | MOMO | BANK
-    @Column(name = "payment_ref", unique = true)
-    private String paymentRef; // VD: SEPAY-ORDER-123
-
-    @Column(name = "paid_at")
+    /* ================= PAYMENT ================= */
+    private String paymentMethod;
+    private String paymentRef;
     private LocalDateTime paidAt;
 
-    @Column(columnDefinition = "TEXT")
-    private String note;
+    /* ================= PREORDER ================= */
+    private LocalDateTime pickupTime;
 
-    /* ================= PROMOTION ================= */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "promotion_id")
-    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-    private Promotion promotion;
-
-    /* ================= BILL ================= */
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
-    @ToString.Exclude
-    private Bill bill;
-
-    /* ================= ORDER ITEMS ================= */
+    /* ================= ITEMS ================= */
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    @ToString.Exclude
-    @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    /* ================= TIME ================= */
-    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /* ================= AUTO TIME ================= */
     @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
