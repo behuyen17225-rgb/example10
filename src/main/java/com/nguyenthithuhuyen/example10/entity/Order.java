@@ -67,8 +67,9 @@ private String paymentMethod;
     private LocalDateTime pickupTime;
 
     /* ================= ITEMS ================= */
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> orderItems = new ArrayList<>();
+   @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+@JsonManagedReference
+private List<OrderItem> orderItems = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

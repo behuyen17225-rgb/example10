@@ -22,6 +22,7 @@ public class OrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
+    @JsonBackReference
     private Order order;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -36,9 +37,9 @@ public class OrderItem {
 
     @Column(nullable = false)
     private BigDecimal price;
-@Column(name = "created_at", nullable = false)
-     private LocalDateTime createdAt;
-     @Column(name = "updated_at", nullable = false)
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Transient
