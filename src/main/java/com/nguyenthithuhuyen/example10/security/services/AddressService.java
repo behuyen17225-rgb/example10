@@ -32,7 +32,9 @@ public class AddressService {
         address.setUser(user);
         address.setStreetAddress(addressRequest.getStreetAddress());
         address.setWard(addressRequest.getWard());
-        address.setDistrict(addressRequest.getDistrict());
+        // Ensure district is never null — use single space if missing
+        String district = addressRequest.getDistrict();
+        address.setDistrict((district == null || district.isBlank()) ? " " : district);
         address.setCity(addressRequest.getCity());
         address.setPostalCode(addressRequest.getPostalCode());
         address.setPhone(addressRequest.getPhone());
@@ -96,7 +98,9 @@ public class AddressService {
 
         address.setStreetAddress(addressRequest.getStreetAddress());
         address.setWard(addressRequest.getWard());
-        address.setDistrict(addressRequest.getDistrict());
+        // Ensure district not null on update as well
+        String district = addressRequest.getDistrict();
+        address.setDistrict((district == null || district.isBlank()) ? " " : district);
         address.setCity(addressRequest.getCity());
         address.setPostalCode(addressRequest.getPostalCode());
         address.setPhone(addressRequest.getPhone());
