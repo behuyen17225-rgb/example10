@@ -235,6 +235,15 @@ public List<OrderResponse> getAllOrderResponses() {
             .toList();
 }
 
+
+public List<OrderResponse> getMyOrderResponses(String username) {
+    return orderRepository.findByUser_Username(username)
+            .stream()
+            .map(this::mapOrderResponse)
+            .toList();
+}
+
+
 private OrderResponse mapOrderResponse(Order order) {
 
     List<OrderItemResponse> items = order.getOrderItems()

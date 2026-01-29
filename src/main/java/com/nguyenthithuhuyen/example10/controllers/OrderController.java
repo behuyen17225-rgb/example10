@@ -33,7 +33,7 @@ public class OrderController {
        (NHÂN VIÊN KHÔNG ĐƯỢC TẠO)
        ===================================================== */
 @PostMapping
-@PreAuthorize("hasAnyRole('USER','ADMIN')")
+@PreAuthorize("hasAnyRole('USER','MODERATOR','ADMIN')")
 public ResponseEntity<Order> createOrder(
         @Valid @RequestBody CreateOrderRequest request
 ) {
@@ -51,25 +51,17 @@ public ResponseEntity<Order> createOrder(
     /* =====================================================
        USER / ADMIN – XEM ĐƠN CỦA CHÍNH MÌNH
        ===================================================== */
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
-    @GetMapping("/my")
-    public ResponseEntity<?> getMyOrders() {
-        try {
-            String username = SecurityContextHolder
-                    .getContext()
-                    .getAuthentication()
-                    .getName();
+@PreAuthorize("hasAnyRole('USER','ADMIN')")
+@GetMapping("/my")
+public ResponseEntity<List<OrderResponse>> getMyOrders() {
+    String username = SecurityContextHolder.getContext()
+            .getAuthentication()
+            .getName();
 
-            List<Order> orders = orderService.getOrdersByUsername(username);
-            return ResponseEntity.ok(orders);
-
-        } catch (Exception e) {
-            log.error("❌ Error getting orders", e);
-            return ResponseEntity.status(500).body(Map.of(
-                    "error", e.getMessage()
-            ));
-        }
-    }
+    return ResponseEntity.ok(
+        orderService.getMyOrderResponses(username)
+    );
+}
 
     /* =====================================================
        USER / ADMIN – XEM CHI TIẾT ĐƠN CỦA MÌNH
