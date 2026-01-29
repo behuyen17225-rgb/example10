@@ -2,6 +2,7 @@ package com.nguyenthithuhuyen.example10.security.services;
 
 import com.nguyenthithuhuyen.example10.dto.CreateOrderRequest;
 import com.nguyenthithuhuyen.example10.dto.OrderItemRequest;
+import com.nguyenthithuhuyen.example10.dto.OrderItemResponse;
 import com.nguyenthithuhuyen.example10.dto.OrderResponse;
 import com.nguyenthithuhuyen.example10.entity.*;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
@@ -227,27 +228,49 @@ public Order createOrder(CreateOrderRequest req, String username) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
     }
-
-    public List<OrderResponse> getAllOrderResponses() {
+public List<OrderResponse> getAllOrderResponses() {
     return orderRepository.findAll()
             .stream()
-            .map(o -> new OrderResponse(
-                    o.getId(),
-                    o.getCustomerName(),
-                    o.getPhone(),
-                    o.getStatus(),
-                    o.getOrderType(),
-                    o.getTotalAmount(),
-                    o.getFinalAmount(),
-                    o.getPickupTime(),
-                    o.getCreatedAt()
-            ))
+            .map(this::mapOrderResponse)
             .toList();
+}
+
+private OrderResponse mapOrderResponse(Order order) {
+
+    List<OrderItemResponse> items = order.getOrderItems()
+            .stream()
+            .map(this::mapOrderItem)
+            .toList();
+
+    return new OrderResponse(
+            order.getId(),
+            order.getCustomerName(),
+            order.getPhone(),
+            order.getStatus(),
+            order.getOrderType(),
+            order.getTotalAmount(),
+            order.getFinalAmount(),
+            order.getPickupTime(),
+            order.getCreatedAt(),
+            items
+    );
 }
 
     public List<Order> getOrdersByUsername(String username) {
         return orderRepository.findByUser_Username(username);
     }
+private OrderItemResponse mapOrderItem(OrderItem item) {
+
+    return new OrderItemResponse(
+            item.getId(),
+            item.getProduct().getId(),
+            item.getProduct().getName(),
+            item.getSize(),
+            item.getQuantity(),
+            item.getPrice(),
+            item.getSubtotal()
+    );
+}
 
     public List<Map<String, Object>> getTopSellingProducts(int limit) {
 
