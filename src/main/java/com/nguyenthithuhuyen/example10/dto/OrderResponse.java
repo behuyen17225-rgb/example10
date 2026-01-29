@@ -4,6 +4,7 @@ import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderType;  
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record OrderResponse(
         Long id,
@@ -14,5 +15,6 @@ public record OrderResponse(
         BigDecimal totalAmount,
         BigDecimal finalAmount,
         LocalDateTime pickupTime,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        List<OrderItemResponse> items
 ) {}
