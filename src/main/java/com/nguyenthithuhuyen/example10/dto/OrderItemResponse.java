@@ -6,6 +6,7 @@ public record OrderItemResponse(
         Long id,
         Long productId,
         String productName,
+         String productImage,
         String size,
         Integer quantity,
         BigDecimal price,

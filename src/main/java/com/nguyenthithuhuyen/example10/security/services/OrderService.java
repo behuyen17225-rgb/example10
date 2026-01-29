@@ -265,6 +265,7 @@ private OrderItemResponse mapOrderItem(OrderItem item) {
             item.getId(),
             item.getProduct().getId(),
             item.getProduct().getName(),
+            item.getProduct().getImageUrl(),
             item.getSize(),
             item.getQuantity(),
             item.getPrice(),
