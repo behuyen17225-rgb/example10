@@ -1,6 +1,7 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
 import com.nguyenthithuhuyen.example10.dto.CreateOrderRequest;
+import com.nguyenthithuhuyen.example10.dto.OrderResponse;
 import com.nguyenthithuhuyen.example10.entity.Order;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.security.services.OrderService;
@@ -95,12 +96,11 @@ public ResponseEntity<Order> createOrder(
     /* =====================================================
        STAFF / ADMIN – XEM TẤT CẢ ĐƠN
        ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
-    @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
-    }
-
+@GetMapping
+@PreAuthorize("hasAnyRole('ADMIN','MODERATOR')")
+public ResponseEntity<List<OrderResponse>> getAllOrders() {
+    return ResponseEntity.ok(orderService.getAllOrderResponses());
+}
     /* =====================================================
        STAFF / ADMIN – UPDATE TRẠNG THÁI ĐƠN
        (CHECK, XÁC NHẬN, HOÀN THÀNH...)

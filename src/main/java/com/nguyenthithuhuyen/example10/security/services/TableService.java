@@ -12,4 +12,5 @@ public interface TableService {
     TableEntity updateTable(Long id, TableEntity table);
     void deleteTable(Long id);
     List<TableEntity> getTablesByStatus(Status status);
+    TableEntity getTableByCode(String code);  
 }

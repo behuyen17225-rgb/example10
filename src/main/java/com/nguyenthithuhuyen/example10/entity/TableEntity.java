@@ -28,7 +28,8 @@ public class TableEntity {
 
 
     private Integer number;
-
+@Column(unique = true)
+    private String code; 
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

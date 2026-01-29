@@ -1,5 +1,6 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
+import com.nguyenthithuhuyen.example10.dto.OrderResponse;
 import com.nguyenthithuhuyen.example10.entity.Order;
 import com.nguyenthithuhuyen.example10.security.services.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +17,9 @@ public class AdminOrderController {
 
     private final OrderService orderService;
 
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
-    }
+@PreAuthorize("hasAnyRole('ADMIN','MODERATOR')")
+public ResponseEntity<List<OrderResponse>> getAllOrders() {
+    return ResponseEntity.ok(orderService.getAllOrderResponses());
+}
 }

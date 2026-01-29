@@ -56,5 +56,9 @@ public class TableServiceImpl implements TableService {
         .orElseThrow(() -> new RuntimeException("Table not found"));
     return table.getStatus() == Status.FREE;
 }
-
+@Override
+    public TableEntity getTableByCode(String code) {
+        return tableRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Table not found"));
+    }
 }

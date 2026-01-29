@@ -2,6 +2,7 @@ package com.nguyenthithuhuyen.example10.security.services;
 
 import com.nguyenthithuhuyen.example10.dto.CreateOrderRequest;
 import com.nguyenthithuhuyen.example10.dto.OrderItemRequest;
+import com.nguyenthithuhuyen.example10.dto.OrderResponse;
 import com.nguyenthithuhuyen.example10.entity.*;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderStatus;
 import com.nguyenthithuhuyen.example10.entity.enums.OrderType;
@@ -227,9 +228,21 @@ public Order createOrder(CreateOrderRequest req, String username) {
                 .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
-    }
+    public List<OrderResponse> getAllOrderResponses() {
+    return orderRepository.findAll()
+            .stream()
+            .map(o -> new OrderResponse(
+                    o.getId(),
+                    o.getCustomerName(),
+                    o.getPhone(),
+                    o.getStatus(),
+                    o.getOrderType(),
+                    o.getTotalAmount(),
+                    o.getFinalAmount(),
+                    o.getCreatedAt()
+            ))
+            .toList();
+}
 
     public List<Order> getOrdersByUsername(String username) {
         return orderRepository.findByUser_Username(username);
