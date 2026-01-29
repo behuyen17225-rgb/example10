@@ -127,4 +127,18 @@ public class TableController {
                 .contentType(MediaType.IMAGE_PNG)
                 .body(qrImage);
     }
+    @PutMapping("/{id}/reserve")
+public ResponseEntity<?> reserve(@PathVariable Long id) {
+    TableEntity table = tableService.getTableById(id);
+
+    if (table.getStatus() != Status.FREE) {
+        return ResponseEntity.badRequest().body("Table not free");
+    }
+
+    table.setStatus(Status.OCCUPIED);
+    tableService.updateTable(id, table);
+
+    return ResponseEntity.ok().build();
+}
+
 }

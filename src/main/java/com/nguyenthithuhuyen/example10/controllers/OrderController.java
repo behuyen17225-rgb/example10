@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import com.nguyenthithuhuyen.example10.entity.enums.OrderType;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -153,4 +155,38 @@ public ResponseEntity<List<OrderResponse>> getAllOrders() {
                 orderService.getRevenueByCategory()
         );
     }
+
+        /* =====================================================
+           UTILS – PHÂN LOẠI ĐƠN HÀNG (TAKEAWAY / DINE_IN / RESERVATION)
+           - reservation: pickupTime != null OR orderType == PREORDER
+           - takeaway: orderType == TAKE_AWAY
+           - dineIn: còn lại
+           ===================================================== */
+        @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
+        @PostMapping("/categorize")
+        public ResponseEntity<Map<String, List<OrderResponse>>> categorizeOrders(
+            @RequestBody List<OrderResponse> orders
+        ) {
+        List<OrderResponse> reservation = orders.stream()
+            .filter(o -> o.pickupTime() != null || o.orderType() == OrderType.PREORDER)
+            .collect(Collectors.toList());
+
+        List<OrderResponse> takeaway = orders.stream()
+            .filter(o -> o.orderType() == OrderType.TAKE_AWAY)
+            .collect(Collectors.toList());
+
+        List<OrderResponse> dineIn = orders.stream()
+            .filter(o -> o.pickupTime() == null
+                && o.orderType() != OrderType.TAKE_AWAY
+                && o.orderType() != OrderType.PREORDER)
+            .collect(Collectors.toList());
+
+        Map<String, List<OrderResponse>> result = Map.of(
+            "takeaway", takeaway,
+            "dineIn", dineIn,
+            "reservation", reservation
+        );
+
+        return ResponseEntity.ok(result);
+        }
 }
