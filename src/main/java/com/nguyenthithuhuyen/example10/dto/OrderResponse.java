@@ -13,5 +13,6 @@ public record OrderResponse(
         OrderType orderType,
         BigDecimal totalAmount,
         BigDecimal finalAmount,
+        LocalDateTime pickupTime,
         LocalDateTime createdAt
 ) {}

@@ -239,6 +239,7 @@ public Order createOrder(CreateOrderRequest req, String username) {
                     o.getOrderType(),
                     o.getTotalAmount(),
                     o.getFinalAmount(),
+                    o.getPickupTime(),
                     o.getCreatedAt()
             ))
             .toList();
