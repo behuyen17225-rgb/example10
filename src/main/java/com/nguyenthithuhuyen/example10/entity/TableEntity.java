@@ -26,11 +26,10 @@ public class TableEntity {
     @Builder.Default
     private Integer capacity = 4;
 
-
     private Integer number;
-@Column(unique = true)
-    private String code; 
-    
+    @Column(unique = true)
+    private String code;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -39,20 +38,20 @@ public class TableEntity {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
     @PrePersist
-    public void generateCode() {
+    public void prePersist() {
+
         if (this.code == null || this.code.isBlank()) {
             this.code = "T" + System.currentTimeMillis();
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
         }
     }
 }
