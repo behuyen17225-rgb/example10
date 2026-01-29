@@ -49,4 +49,10 @@ public class TableEntity {
     void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+    @PrePersist
+    public void generateCode() {
+        if (this.code == null || this.code.isBlank()) {
+            this.code = "T" + System.currentTimeMillis();
+        }
+    }
 }
