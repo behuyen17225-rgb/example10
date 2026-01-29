@@ -12,6 +12,8 @@ public record OrderResponse(
         String phone,
         OrderStatus status,
         OrderType orderType,
+        String paymentMethod,
+        String adress,
         BigDecimal totalAmount,
         BigDecimal finalAmount,
         LocalDateTime pickupTime,
