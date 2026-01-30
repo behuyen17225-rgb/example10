@@ -58,13 +58,7 @@ public Order createOrder(CreateOrderRequest req, String username) {
     order.setCreatedAt(LocalDateTime.now());
     order.setPaymentMethod(req.getPaymentMethod());
 
-    /* ================= ⭐ SET PAYMENT REF CHO BANK ================= */
-    if ("BANK".equalsIgnoreCase(req.getPaymentMethod())) {
-        // tạm set trước, sau khi save có id thì update lại
-        order.setPaymentRef("Order_" + System.currentTimeMillis());
-    }
-
-    /* ================= TABLE ID = 1 → TAKE AWAY ================= */
+    /* ================= TABLE LOGIC ================= */
     if (req.getTableId() == 1) {
 
         order.setOrderType(OrderType.TAKE_AWAY);
@@ -76,7 +70,7 @@ public Order createOrder(CreateOrderRequest req, String username) {
 
     } else {
 
-        if (table.getStatus() != Status.FREE) {
+        if (req.getPickupTime() == null && table.getStatus() != Status.FREE) {
             throw new RuntimeException("Table not available");
         }
 
@@ -88,16 +82,20 @@ public Order createOrder(CreateOrderRequest req, String username) {
             order.setOrderType(OrderType.PREORDER);
             order.setPickupTime(req.getPickupTime());
             order.setStatus(OrderStatus.PENDING);
-            table.setStatus(Status.RESERVED);
+
+            if (table.getStatus() == Status.FREE) {
+                table.setStatus(Status.RESERVED);
+                tableRepo.save(table);
+            }
 
         } else {
 
             order.setOrderType(OrderType.DINE_IN);
             order.setStatus(OrderStatus.PREPARING);
-            table.setStatus(Status.OCCUPIED);
-        }
 
-        tableRepo.save(table);
+            table.setStatus(Status.OCCUPIED);
+            tableRepo.save(table);
+        }
     }
 
     /* ================= CUSTOMER ================= */
@@ -136,10 +134,10 @@ public Order createOrder(CreateOrderRequest req, String username) {
     order.setDiscount(BigDecimal.ZERO);
     order.setFinalAmount(total);
 
-    /* ================= SAVE ORDER ================= */
+    /* ================= SAVE LẦN 1 ================= */
     Order savedOrder = orderRepository.save(order);
 
-    /* ================= ⭐ UPDATE PAYMENT REF SAU KHI CÓ ID ================= */
+    /* ================= SET PAYMENT_REF ================= */
     if ("BANK".equalsIgnoreCase(savedOrder.getPaymentMethod())) {
         savedOrder.setPaymentRef("ORDER_" + savedOrder.getId());
         savedOrder = orderRepository.save(savedOrder);
@@ -147,6 +145,8 @@ public Order createOrder(CreateOrderRequest req, String username) {
 
     return savedOrder;
 }
+
+
 /*
      * ==========================================================
      * STAFF CREATE ORDER
