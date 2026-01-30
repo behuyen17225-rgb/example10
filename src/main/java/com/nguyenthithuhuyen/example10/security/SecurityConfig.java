@@ -92,6 +92,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                         .requestMatchers("/ws/**").permitAll()
+        .requestMatchers("/topic/**").permitAll()
+        .requestMatchers("/app/**").permitAll()
+
+
                         .anyRequest().authenticated())
 
                 .authenticationProvider(authenticationProvider());
