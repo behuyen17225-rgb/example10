@@ -40,22 +40,12 @@ public class OrderService {
      * USER / STAFF CREATE ORDER
      * ==========================================================
      */
-
 @Transactional
 public Order createOrder(CreateOrderRequest req, String username) {
 
     User user = userRepo.findByUsername(username)
             .orElseThrow(() -> new RuntimeException("User not found"));
 
-    Order order = new Order();
-    order.setUser(user);
-    order.setCreatedAt(LocalDateTime.now());
-    order.setPaymentMethod(req.getPaymentMethod());
-
-    /* ================= ORDER TYPE ================= */
-    OrderType orderType = OrderType.valueOf(req.getOrderType());
-
-    /* ================= TABLE LOGIC ================= */
     if (req.getTableId() == null) {
         throw new RuntimeException("tableId is required");
     }
@@ -63,39 +53,52 @@ public Order createOrder(CreateOrderRequest req, String username) {
     TableEntity table = tableRepo.findById(req.getTableId())
             .orElseThrow(() -> new RuntimeException("Table not found"));
 
-    // ================= MANG VỀ =================
+    Order order = new Order();
+    order.setUser(user);
+    order.setCreatedAt(LocalDateTime.now());
+    order.setPaymentMethod(req.getPaymentMethod());
+
+    /* ================= TABLE ID = 1 → TAKE AWAY ================= */
     if (req.getTableId() == 1) {
 
         order.setOrderType(OrderType.TAKE_AWAY);
-        order.setTable(table); // ⚠️ vẫn set table để khỏi NULL
+        order.setTable(table); // giữ table để tránh null
         order.setStatus(OrderStatus.PENDING);
-        order.setAddress(req.getAddress() != null ? req.getAddress() : "Mang về");
+        order.setAddress(
+                req.getAddress() != null ? req.getAddress() : "Mang về"
+        );
 
         // ❌ KHÔNG đổi status bàn
-    }
 
-    // ================= ĂN TẠI CHỖ / ĐẶT TRƯỚC =================
-    else {
+    } else {
 
-        order.setOrderType(OrderType.DINE_IN);
-        order.setTable(table);
-
+        /* ================= TABLE PHẢI RẢNH ================= */
         if (table.getStatus() != Status.FREE) {
             throw new RuntimeException("Table not available");
         }
 
+        order.setTable(table);
+        order.setAddress("Tại quán");
+
+        /* ================= PREORDER ================= */
         if (req.getPickupTime() != null) {
-            // 👉 ĐẶT BÀN TRƯỚC
+
+            order.setOrderType(OrderType.PREORDER);
             order.setPickupTime(req.getPickupTime());
             order.setStatus(OrderStatus.PENDING);
+
             table.setStatus(Status.RESERVED);
-        } else {
-            // 👉 ĂN TẠI CHỖ
+
+        } 
+        /* ================= DINE IN ================= */
+        else {
+
+            order.setOrderType(OrderType.DINE_IN);
             order.setStatus(OrderStatus.PREPARING);
+
             table.setStatus(Status.OCCUPIED);
         }
 
-        order.setAddress("Tại quán");
         tableRepo.save(table);
     }
 
@@ -137,7 +140,8 @@ public Order createOrder(CreateOrderRequest req, String username) {
 
     return orderRepository.save(order);
 }
-    /*
+
+/*
      * ==========================================================
      * STAFF CREATE ORDER
      * ==========================================================
