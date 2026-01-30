@@ -18,6 +18,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // Prefix cho client SEND tin (ví dụ: /app/order)
         registry.setApplicationDestinationPrefixes("/app");
     }
+    
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
