@@ -138,7 +138,7 @@ public Order createOrder(CreateOrderRequest req, String username) {
     Order savedOrder = orderRepository.save(order);
 
     /* ================= SET PAYMENT_REF ================= */
-    if ("BANK".equalsIgnoreCase(savedOrder.getPaymentMethod())) {
+    if ("CARD".equalsIgnoreCase(savedOrder.getPaymentMethod())) {
         savedOrder.setPaymentRef("ORDER_" + savedOrder.getId());
         savedOrder = orderRepository.save(savedOrder);
     }
