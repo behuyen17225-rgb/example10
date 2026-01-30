@@ -14,6 +14,7 @@ public record OrderResponse(
         OrderStatus status,
         OrderType orderType,
         String paymentMethod,
+        String paymentRef,
         String adress,
         BigDecimal totalAmount,
         BigDecimal finalAmount,

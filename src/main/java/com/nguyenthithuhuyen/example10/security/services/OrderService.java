@@ -263,6 +263,7 @@ private OrderResponse mapOrderResponse(Order order) {
             order.getStatus(),
             order.getOrderType(),
             order.getPaymentMethod(),
+            order.getPaymentRef(),
             order.getAddress(),
             order.getTotalAmount(),
             order.getFinalAmount(),
