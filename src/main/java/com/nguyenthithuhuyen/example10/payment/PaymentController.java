@@ -24,8 +24,8 @@ public class PaymentController {
 
         Order order = orderService.getOrderById(id);
 
-        if (!"BANK".equalsIgnoreCase(order.getPaymentMethod())) {
-            throw new RuntimeException("Order is not BANK payment");
+        if (!"CARD".equalsIgnoreCase(order.getPaymentMethod())) {
+            throw new RuntimeException("Order is not CARD payment");
         }
 
         if (order.getStatus() != OrderStatus.PENDING) {
