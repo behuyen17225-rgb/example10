@@ -26,8 +26,12 @@ public class TableEntity {
     @Builder.Default
     private Integer capacity = 4;
 
-    // 👉 GIỮ field number, map sang cột khác + xử lý null
+    // 👉 cột mới dùng để ghi
     @Column(name = "table_no", nullable = false)
+    private Integer tableNo;
+
+    // 👉 cột cũ legacy
+    @Column(name = "number", insertable = false, updatable = false)
     private Integer number;
 
     @Column(unique = true)
@@ -44,22 +48,21 @@ public class TableEntity {
     @PrePersist
     public void prePersist() {
 
-        // ✅ xử lý number = null
-        if (this.number == null) {
-            this.number = 0;
+        if (tableNo == null) {
+            tableNo = tableNumber; // hoặc 0 nếu bạn muốn
         }
 
-        if (this.code == null || this.code.isBlank()) {
-            this.code = "T" + System.currentTimeMillis();
+        if (code == null || code.isBlank()) {
+            code = "T" + System.currentTimeMillis();
         }
 
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
         }
     }
 
     @PreUpdate
-    void onUpdate() {
+    public void preUpdate() {
         updatedAt = LocalDateTime.now();
     }
 }

@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,8 +26,9 @@ import com.nguyenthithuhuyen.example10.entity.enums.OrderType;
 public class OrderController {
 
     private static final Logger log = LoggerFactory.getLogger(OrderController.class);
-    private final OrderService orderService;
 
+    private final OrderService orderService;
+    private final SimpMessagingTemplate messagingTemplate; // ⭐ THÊM
     /* =====================================================
        USER / ADMIN – TẠO ORDER
        (NHÂN VIÊN KHÔNG ĐƯỢC TẠO)
@@ -45,6 +46,10 @@ public ResponseEntity<Order> createOrder(
     log.info("🛒 Create order request = {}", request);
 
     Order created = orderService.createOrder(request, username);
+    messagingTemplate.convertAndSend(
+                "/topic/orders/new",
+                OrderResponse.fromEntity(created)
+        );
     return ResponseEntity.status(201).body(created);
 }
 
