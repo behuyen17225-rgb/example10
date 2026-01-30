@@ -28,10 +28,14 @@ public class PaymentController {
             throw new RuntimeException("Order is not CARD payment");
         }
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new RuntimeException("Order already paid");
-        }
-
+if (
+    order.getStatus() != OrderStatus.PENDING &&
+    order.getStatus() != OrderStatus.PREPARING
+) {
+    throw new RuntimeException(
+        "Order cannot be paid in status: " + order.getStatus()
+    );
+}
         return sePayService.createQr(order);
     }
 
