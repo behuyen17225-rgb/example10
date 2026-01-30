@@ -10,6 +10,7 @@ public record OrderResponse(
         Long id,
         String customerName,
         String phone,
+        Long tableId,
         OrderStatus status,
         OrderType orderType,
         String paymentMethod,

@@ -254,7 +254,8 @@ private OrderResponse mapOrderResponse(Order order) {
     return new OrderResponse(
             order.getId(),
             order.getCustomerName(),
-            order.getPhone(),
+            order.getPhone(),            
+            order.getTable().getId(),
             order.getStatus(),
             order.getOrderType(),
             order.getPaymentMethod(),
