@@ -26,7 +26,10 @@ public class TableEntity {
     @Builder.Default
     private Integer capacity = 4;
 
+    // 👉 GIỮ field number, map sang cột khác + xử lý null
+    @Column(name = "table_no", nullable = false)
     private Integer number;
+
     @Column(unique = true)
     private String code;
 
@@ -38,13 +41,13 @@ public class TableEntity {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
     @PrePersist
     public void prePersist() {
+
+        // ✅ xử lý number = null
+        if (this.number == null) {
+            this.number = 0;
+        }
 
         if (this.code == null || this.code.isBlank()) {
             this.code = "T" + System.currentTimeMillis();
@@ -53,5 +56,10 @@ public class TableEntity {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
