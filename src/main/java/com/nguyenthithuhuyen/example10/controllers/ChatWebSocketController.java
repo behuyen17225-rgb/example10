@@ -1,7 +1,8 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
 import com.nguyenthithuhuyen.example10.payload.websocket.WsChatMessage;
-import com.nguyenthithuhuyen.example10.security.services.ChatService;
+import com.nguyenthithuhuyen.example10.security.services.SecurityChatService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Controller;
 public class ChatWebSocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final ChatService chatService;
+    private final SecurityChatService chatService;
 
     // Client gửi vào /app/chat.send
     @MessageMapping("/chat.send")

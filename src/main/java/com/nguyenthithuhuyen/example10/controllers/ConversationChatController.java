@@ -1,6 +1,6 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
-import com.nguyenthithuhuyen.example10.security.services.ChatService;
+import com.nguyenthithuhuyen.example10.security.services.SecurityChatService;
 import com.nguyenthithuhuyen.example10.payload.request.ChatRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin
 public class ConversationChatController {
 
-    private final ChatService chatService;
+    private final SecurityChatService chatService;
 
     @PostMapping("/{conversationId}/messages")
     public ResponseEntity<Void> sendMessage(
