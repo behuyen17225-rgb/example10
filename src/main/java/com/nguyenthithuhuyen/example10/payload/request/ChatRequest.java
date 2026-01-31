@@ -4,10 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
 @AllArgsConstructor
+@Data
 public class ChatRequest {
-    private String prompt;
-    private Long userId; // ID của user đang chat
+    private String conversationId;
+    private String sender; // CUSTOMER | STAFF
+    private String content;
 }

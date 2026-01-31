@@ -15,10 +15,20 @@ public class Conversation {
     private Long customerId;
     private Long staffId;
 
+    private String status;
+
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     @PrePersist
     void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        status = "OPEN";
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
