@@ -7,4 +7,6 @@ public class WsChatMessage {
     private String conversationId;
     private String sender;   // CUSTOMER | STAFF
     private String content;
+    private Long staffId;
 }
+
