@@ -1,19 +1,28 @@
 package com.nguyenthithuhuyen.example10.dto;
 
 import lombok.Data;
-
+import org.springframework.hateoas.RepresentationModel;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 @Data
-public class ProductResponseDto {
-    public Long id;
-    public String name;
-    public String description;
-    public BigDecimal price;
-    public String imageUrl;
-    public Integer stockQuantity;
+public class ProductResponseDto
+        extends RepresentationModel<ProductResponseDto> {
+
+    private Long id;
+    private String name;
+    private String description;
+
+    // ❌ price đơn lẻ KHÔNG cần nếu bạn dùng prices + minPrice
+    // private BigDecimal price;
+
+    private String imageUrl;
+    private Integer stockQuantity;
+    private Boolean isActive;
+
     private BigDecimal minPrice;
-    public Boolean isActive;
-    public CategoryDTO category; 
-    private List<ProductPriceDTO> prices;}
+
+    private CategoryDTO category;
+    private List<ProductPriceDTO> prices;
+}

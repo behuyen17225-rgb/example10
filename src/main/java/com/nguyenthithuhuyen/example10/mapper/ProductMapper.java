@@ -2,12 +2,12 @@ package com.nguyenthithuhuyen.example10.mapper;
 
 import java.math.BigDecimal;
 import java.util.List;
+
 import com.nguyenthithuhuyen.example10.dto.CategoryDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductPriceDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductResponseDto;
 import com.nguyenthithuhuyen.example10.entity.Product;
 import com.nguyenthithuhuyen.example10.entity.ProductPrice;
-
 
 public class ProductMapper {
 
@@ -22,7 +22,7 @@ public class ProductMapper {
         dto.setStockQuantity(product.getStockQuantity());
         dto.setIsActive(product.getIsActive());
 
-        // ✅ CATEGORY
+        /* ================= CATEGORY ================= */
         if (product.getCategory() != null) {
             dto.setCategory(
                 new CategoryDTO(
@@ -32,7 +32,7 @@ public class ProductMapper {
                     product.getCategory().getDescription(),
                     product.getCategory().getParent() != null
                         ? product.getCategory().getParent().getId()
-                        : null, 
+                        : null,
                     product.getCategory().getParent() != null
                         ? product.getCategory().getParent().getName()
                         : null
@@ -40,24 +40,28 @@ public class ProductMapper {
             );
         }
 
-        // ✅ PRICES (SIZE)
-        dto.setPrices(
-            product.getPrices() == null
-                ? List.of()
-                : product.getPrices().stream()
-                    .map(p -> new ProductPriceDTO(
-                        p.getSize(),
+        /* ================= PRICES ================= */
+        List<ProductPrice> prices =
+                product.getPrices() != null ? product.getPrices() : List.of();
 
-                        p.getPrice()
-                    ))
-                    .toList()
+        // map price DTO
+        dto.setPrices(
+            prices.stream()
+                .map(p -> new ProductPriceDTO(
+                    p.getSize(),
+                    p.getPrice()
+                ))
+                .toList()
         );
-         BigDecimal minPrice = product.getPrices().stream()
+
+        // min price
+        BigDecimal minPrice = prices.stream()
                 .map(ProductPrice::getPrice)
                 .min(BigDecimal::compareTo)
                 .orElse(BigDecimal.ZERO);
 
         dto.setMinPrice(minPrice);
+
         return dto;
     }
 }
