@@ -93,6 +93,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers("/error").permitAll()
                          .requestMatchers("/ws/**").permitAll()
+                         .requestMatchers("/api/conversations/**").permitAll()
         .requestMatchers("/topic/**").permitAll()
         .requestMatchers("/app/**").permitAll()
 
