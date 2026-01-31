@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/conversations")
@@ -26,7 +25,6 @@ public class ConversationController {
             @RequestParam(required = false) Long staffId
     ) {
         Conversation c = new Conversation();
-        c.setId(UUID.randomUUID().toString());
         c.setCustomerId(customerId);
         c.setStaffId(staffId);
         return conversationRepo.save(c);
@@ -46,7 +44,7 @@ public class ConversationController {
 
     /* ================== CHAT HISTORY ================== */
     @GetMapping("/{conversationId}/messages")
-    public List<Chat> getMessages(@PathVariable String conversationId) {
+    public List<Chat> getMessages(@PathVariable Long conversationId) {
         return chatRepo.findByConversationIdOrderByCreatedAtAsc(conversationId);
     }
 }

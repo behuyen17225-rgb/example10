@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
@@ -24,45 +25,47 @@ public class ChatWebSocketController {
     private final SecurityChatService chatService;
     private final ConversationRepository conversationRepo;
 
-    @MessageMapping("/chat.send")
-    public void send(WsChatMessage message) {
+@MessageMapping("/chat.send")
+public void send(@Payload WsChatMessage message) {
 
-        // 1️⃣ SAVE MESSAGE
-        chatService.saveMessage(
-                message.getConversationId(),
-                message.getSender(),
-                message.getContent()
-        );
+    System.out.println("🔥 WS MESSAGE: " + message);
 
-        // 2️⃣ UPDATE CONVERSATION
-        Conversation c = conversationRepo
-                .findById(message.getConversationId())
-                .orElseThrow();
+    chatService.saveMessage(
+            message.getConversationId(), // ✅ Long
+            message.getSender(),
+            message.getContent()
+    );
 
-        // ✅ STAFF reply lần đầu → gán staffId
-        if ("STAFF".equals(message.getSender()) && c.getStaffId() == null) {
-            c.setStaffId(message.getStaffId());
-        }
+    Conversation c = conversationRepo
+            .findById(message.getConversationId())
+            .orElseThrow(() -> new RuntimeException("Conversation not found"));
 
-        c.setUpdatedAt(LocalDateTime.now());
-        conversationRepo.save(c);
+    if ("STAFF".equals(message.getSender())
+            && c.getStaffId() == null
+            && message.getStaffId() != null) {
 
-        // 3️⃣ SEND CHAT
-        messagingTemplate.convertAndSend(
-                "/topic/chat/" + c.getId(),
-                message
-        );
-
-        // 4️⃣ NOTIFY STAFF
-        if ("CUSTOMER".equals(message.getSender())) {
-            messagingTemplate.convertAndSend(
-                    "/topic/staff/notify",
-                    Map.of(
-                            "conversationId", c.getId(),
-                            "customerId", c.getCustomerId(),
-                            "content", message.getContent()
-                    )
-            );
-        }
+        c.setStaffId(message.getStaffId());
     }
+
+    c.setUpdatedAt(LocalDateTime.now());
+    conversationRepo.save(c);
+
+    messagingTemplate.convertAndSend(
+            "/topic/chat/" + c.getId(),
+            message
+    );
+
+    if ("CUSTOMER".equals(message.getSender())) {
+        messagingTemplate.convertAndSend(
+                "/topic/staff/notify",
+                Map.of(
+                        "conversationId", c.getId(),
+                        "customerId", c.getCustomerId(),
+                        "content", message.getContent()
+                )
+        );
+    }
+}
+
+
 }

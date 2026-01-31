@@ -16,7 +16,7 @@ public class ConversationChatController {
 
     @PostMapping("/{conversationId}/messages")
     public ResponseEntity<Void> sendMessage(
-            @PathVariable String conversationId,
+            @PathVariable Long conversationId,
             @RequestBody ChatRequest req) {
 
         chatService.saveMessage(

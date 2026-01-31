@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 public class ConversationSidebarDto {
-    private String conversationId;
+    private Long conversationId;
     private Long customerId;
     private String lastMessage;
     private LocalDateTime updatedAt;

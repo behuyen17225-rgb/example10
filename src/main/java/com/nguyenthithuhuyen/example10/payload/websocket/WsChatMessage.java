@@ -4,9 +4,10 @@ import lombok.Data;
 
 @Data
 public class WsChatMessage {
-    private String conversationId;
-    private String sender;   // CUSTOMER | STAFF
+    private Long conversationId;   // ✅ Long
+    private String sender;          // CUSTOMER | STAFF
     private String content;
-    private Long staffId;
+    private Long staffId;           // nullable
 }
+
 

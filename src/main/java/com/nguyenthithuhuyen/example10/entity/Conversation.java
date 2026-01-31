@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 public class Conversation {
 
     @Id
-    private String id;
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
+
 
     private Long customerId;
     private Long staffId;

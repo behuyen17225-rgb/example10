@@ -11,15 +11,13 @@ public class SecurityChatService {
 
     private final ChatRepository chatRepo;
 
-     public void saveMessage(String conversationId, String sender, String content) {
+    public void saveMessage(Long conversationId, String sender, String content) {
 
         Chat chat = new Chat();
-        chat.setConversationId(conversationId);
+        chat.setConversationId(conversationId); // ✅ Long
         chat.setSender(sender);
         chat.setContent(content);
 
         chatRepo.save(chat);
     }
-    
 }
-

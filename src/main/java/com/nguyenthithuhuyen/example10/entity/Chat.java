@@ -12,19 +12,14 @@ public class Chat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String conversationId;
+    @Column(name = "conversation_id", nullable = false)
+    private Long conversationId;   // ✅ Long
 
     @Column(nullable = false)
-    private String sender; // CUSTOMER | STAFF
+    private String sender;
 
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(nullable = false)
     private String content;
 
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    private LocalDateTime createdAt = LocalDateTime.now();
 }
