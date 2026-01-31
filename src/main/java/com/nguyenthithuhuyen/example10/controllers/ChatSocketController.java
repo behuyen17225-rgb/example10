@@ -15,7 +15,7 @@ public class ChatSocketController {
     @Autowired
     private ChatRepository repo;
 
-    @MessageMapping("/chat.send")
+    @MessageMapping("/chat.send.socket")
     public void send(Chat message) {
 
         repo.save(message);
