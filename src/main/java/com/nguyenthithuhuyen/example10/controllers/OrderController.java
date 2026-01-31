@@ -104,20 +104,15 @@ public ResponseEntity<List<OrderResponse>> getAllOrders() {
        STAFF / ADMIN – UPDATE TRẠNG THÁI ĐƠN
        (CHECK, XÁC NHẬN, HOÀN THÀNH...)
        ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Order> updateStatus(
-            @PathVariable Long id,
-            @RequestParam String status
-    ) {
-
-        OrderStatus newStatus =
-                OrderStatus.valueOf(status.toUpperCase());
-
-        Order updated = orderService.updateOrderStatus(id, newStatus);
-        return ResponseEntity.ok(updated);
-    }
-
+@PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
+@PutMapping("/{id}/status")
+public ResponseEntity<Order> updateStatus(
+        @PathVariable Long id,
+        @RequestParam OrderStatus status
+) {
+    Order updated = orderService.updateOrderStatus(id, status);
+    return ResponseEntity.ok(updated);
+}
     /* =====================================================
        STATS – TOP SELLING PRODUCTS
        ===================================================== */
