@@ -1,19 +1,20 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
+import com.nguyenthithuhuyen.example10.dto.ProductRequest;
 import com.nguyenthithuhuyen.example10.dto.ProductResponseDto;
 import com.nguyenthithuhuyen.example10.entity.Category;
 import com.nguyenthithuhuyen.example10.entity.Product;
+import com.nguyenthithuhuyen.example10.entity.ProductPrice;
+import com.nguyenthithuhuyen.example10.mapper.ProductMapper;
 import com.nguyenthithuhuyen.example10.repository.CategoryRepository;
 import com.nguyenthithuhuyen.example10.security.services.ProductService;
-import com.nguyenthithuhuyen.example10.mapper.ProductMapper;
-import com.nguyenthithuhuyen.example10.dto.ProductRequest;
-import com.nguyenthithuhuyen.example10.entity.ProductPrice;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -23,24 +24,43 @@ public class ProductController {
     private final ProductService productService;
     private final CategoryRepository categoryRepository;
 
-
     /* ================= GET ALL ================= */
     @GetMapping
     public ResponseEntity<List<ProductResponseDto>> getAllProducts() {
-        return ResponseEntity.ok(
-            productService.getAllProducts()
+
+        List<ProductResponseDto> result = productService.getAllProducts()
                 .stream()
-                .map(ProductMapper::toResponse)
-                .toList()
-        );
+                .map(p -> {
+                    ProductResponseDto dto = ProductMapper.toResponse(p);
+
+                    dto.add(linkTo(
+                            methodOn(ProductController.class)
+                                    .getById(p.getId()))
+                            .withSelfRel());
+
+                    return dto;
+                })
+                .toList();
+
+        return ResponseEntity.ok(result);
     }
 
     /* ================= GET BY ID ================= */
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDto> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(
-            ProductMapper.toResponse(productService.getProductById(id))
-        );
+
+        ProductResponseDto dto =
+                ProductMapper.toResponse(productService.getProductById(id));
+
+        dto.add(linkTo(
+                methodOn(ProductController.class).getById(id))
+                .withSelfRel());
+
+        dto.add(linkTo(
+                methodOn(ProductController.class).getAllProducts())
+                .withRel("products"));
+
+        return ResponseEntity.ok(dto);
     }
 
     /* ================= CREATE ================= */
@@ -60,22 +80,28 @@ public class ProductController {
                 .category(category)
                 .build();
 
-        // 🔥 map prices theo size
         if (request.getPrices() != null) {
             List<ProductPrice> prices = request.getPrices().stream()
-                .map(p -> ProductPrice.builder()
-                        .size(p.getSize())   // String hoặc Enum
-                        .price(p.getPrice())
-                        .product(product)
-                        .build()
-                ).toList();
-
+                    .map(p -> ProductPrice.builder()
+                            .size(p.getSize())
+                            .price(p.getPrice())
+                            .product(product)
+                            .build())
+                    .toList();
             product.setPrices(prices);
         }
 
         Product saved = productService.createProduct(product);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ProductMapper.toResponse(saved));
+
+        ProductResponseDto dto = ProductMapper.toResponse(saved);
+        dto.add(linkTo(
+                methodOn(ProductController.class)
+                        .getById(saved.getId()))
+                .withSelfRel());
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(dto);
     }
 
     /* ================= UPDATE ================= */
@@ -96,23 +122,28 @@ public class ProductController {
         product.setIsActive(request.getIsActive());
         product.setCategory(category);
 
-        // 🔥 replace prices
         product.getPrices().clear();
         if (request.getPrices() != null) {
             request.getPrices().forEach(p ->
-                product.getPrices().add(
-                    ProductPrice.builder()
-                        .size(p.getSize())
-                        .price(p.getPrice())
-                        .product(product)
-                        .build()
-                )
+                    product.getPrices().add(
+                            ProductPrice.builder()
+                                    .size(p.getSize())
+                                    .price(p.getPrice())
+                                    .product(product)
+                                    .build()
+                    )
             );
         }
 
-        return ResponseEntity.ok(
-            ProductMapper.toResponse(productService.updateProduct(id, product))
-        );
+        Product updated = productService.updateProduct(id, product);
+
+        ProductResponseDto dto = ProductMapper.toResponse(updated);
+        dto.add(linkTo(
+                methodOn(ProductController.class)
+                        .getById(updated.getId()))
+                .withSelfRel());
+
+        return ResponseEntity.ok(dto);
     }
 
     /* ================= DELETE ================= */
