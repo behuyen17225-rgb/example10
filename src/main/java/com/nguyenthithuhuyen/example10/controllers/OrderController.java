@@ -106,13 +106,14 @@ public ResponseEntity<List<OrderResponse>> getAllOrders() {
        ===================================================== */
 @PreAuthorize("hasAnyRole('MODERATOR','ADMIN')")
 @PutMapping("/{id}/status")
-public ResponseEntity<Order> updateStatus(
+public ResponseEntity<OrderResponse> updateStatus(
         @PathVariable Long id,
         @RequestParam OrderStatus status
 ) {
     Order updated = orderService.updateOrderStatus(id, status);
-    return ResponseEntity.ok(updated);
+    return ResponseEntity.ok(OrderResponse.fromEntity(updated));
 }
+
     /* =====================================================
        STATS – TOP SELLING PRODUCTS
        ===================================================== */
